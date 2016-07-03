@@ -12,3 +12,5 @@ words
 dict
 test
 months
+*.rs.bk
+*.iml
