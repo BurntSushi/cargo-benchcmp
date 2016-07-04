@@ -17,28 +17,37 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 
 const USAGE: &'static str = r#"
-usage: cargo-benchcmp [options] <old-file> <new-file>
-       cargo-benchcmp --help
+Compare Rust micro-benchmarks by saving the output of the benchmark to file
+and providing it into this command.
+The first version takes two file and compares the common bench-tests.
+The second version takes two names of implementations and one or more files,
+and compares the common bench-tests of the two implementations based on the
+name scheme "implementation::test".
 
-optional arguments:
+Usage: cargo-benchcmp [options] <file> <file>
+       cargo-benchcmp [options] <name> <name> [--] <file>...
+       cargo-benchcmp -h | --help
+
+
+Options:
   -h, --help            show this help message and exit
-  --threshold <n>       Only show comparisons with a percentage change greater
-                        than this threshold.
-  --variance            Show variance.
-  --show <show-option>  Show regressions, improvements or both. [default: both]
-  --strip-old <regex>   A regex to strip from old benchmark names.
-  --strip-new <regex>   A regex to strip from new benchmark names.
+  --threshold <n>       only show comparisons with a percentage change greater
+                        than this threshold
+  --variance            show variance
+  --show <option>       show regressions, improvements or both [default: both]
+  --strip-fst <regex>   a regex to strip from first benchmarks' names
+  --strip-snd <regex>   a regex to strip from second benchmarks' names
 "#;
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_threshold: Option<u8>,
-    flag_show: ShowOption,
     flag_variance: bool,
-    flag_strip_old: Option<String>,
-    flag_strip_new: Option<String>,
-    arg_old_file: String,
-    arg_new_file: String,
+    flag_show: ShowOption,
+    flag_strip_fst: Option<String>,
+    flag_strip_snd: Option<String>,
+    arg_name: Option<[String; 2]>,
+    arg_file: Vec<String>,
 }
 
 #[derive(Debug, RustcDecodable, PartialEq, Eq)]
@@ -64,7 +73,7 @@ const BENCHMARK_REGEX: &'static str = concat!(r#"test\s+(?P<name>\S+)\s+"#,
 
 impl Benchmark {
     /// Parses a single benchmark line into a Benchmark.
-    fn parse(line: String, name_filter: &Option<Regex>) -> Option<Benchmark> {
+    fn parse(line: String) -> Option<Benchmark> {
         lazy_static! {
             static ref RE: Regex = Regex::new(BENCHMARK_REGEX).unwrap();
         }
@@ -72,20 +81,11 @@ impl Benchmark {
             fn drop_commas_and_parse(s: &str) -> Option<usize> {
                 drop_commas(s).parse::<usize>().ok()
             }
-            if let &Some(ref regex) = name_filter {
-                Benchmark {
-                    name: regex.replace(c.name("name").unwrap(), ""),
-                    ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
-                    variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
-                    throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
-                }
-            } else {
-                Benchmark {
-                    name: c.name("name").unwrap().into(),
-                    ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
-                    variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
-                    throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
-                }
+            Benchmark {
+                name: c.name("name").unwrap().into(),
+                ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
+                variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
+                throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
             }
         })
     }
@@ -122,7 +122,7 @@ fn drop_commas(s: &str) -> String {
         .collect::<String>()
 }
 
-fn parse_benchmarks(all_benchmarks: File, regex: Option<Regex>) -> Vec<Benchmark> {
+fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item = Benchmark>> {
     let reader = BufReader::new(all_benchmarks);
 
     let lines = reader.lines().skip_while(|r| match *r {
@@ -130,9 +130,8 @@ fn parse_benchmarks(all_benchmarks: File, regex: Option<Regex>) -> Vec<Benchmark
         _ => true,
     });
 
-    lines.filter_map(Result::ok)
-        .filter_map(|line: String| Benchmark::parse(line, &regex))
-        .collect()
+    Box::new(lines.filter_map(Result::ok)
+        .filter_map(|line: String| Benchmark::parse(line)))
 }
 
 /// Takes two *sorted* vectors and a comparison function
@@ -246,77 +245,141 @@ fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
-    let old_regex = args.flag_strip_old.and_then(|s| {
-        match Regex::new(s.as_str()) {
-            Ok(re) => Some(re),
-            Err(e) => {
-                err_println!("ERROR: strip_old: {}", e);
-                std::process::exit(1);
+    let fst_replace: Box<Fn(&str) -> String> = match args.flag_strip_fst {
+        None => Box::new(|s: &str| String::from(s)),
+        Some(s) => {
+            match Regex::new(s.as_str()) {
+                Ok(re) => Box::new(move |s: &str| re.replace(s, "")),
+                Err(e) => {
+                    err_println!("ERROR: strip_fst: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
-    });
-    let new_regex = args.flag_strip_new.and_then(|s| {
-        match Regex::new(s.as_str()) {
-            Ok(re) => Some(re),
-            Err(e) => {
-                err_println!("ERROR: strip_new: {}", e);
-                std::process::exit(1);
+    };
+    let snd_replace: Box<Fn(&str) -> String> = match args.flag_strip_snd {
+        None => Box::new(|s: &str| String::from(s)),
+        Some(s) => {
+            match Regex::new(s.as_str()) {
+                Ok(re) => Box::new(move |s: &str| re.replace(s, "")),
+                Err(e) => {
+                    err_println!("ERROR: strip_fst: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
-    });
+    };
 
-    let mut old = parse_benchmarks(File::open(args.arg_old_file.clone()).unwrap(), old_regex);
-    let mut new = parse_benchmarks(File::open(args.arg_new_file.clone()).unwrap(), new_regex);
+    let (mut fst, mut snd) = match args.arg_name {
+        None => {
+            let fst = parse_benchmarks(File::open(&args.arg_file[0]).unwrap());
+            let snd = parse_benchmarks(File::open(&args.arg_file[1]).unwrap());
 
-    old.sort_by(|b1, b2| b1.name.cmp(&b2.name));
-    new.sort_by(|b1, b2| b1.name.cmp(&b2.name));
+            let fst = fst.map(|mut b| { b.name = fst_replace(b.name.as_str()); b }).collect::<Vec<Benchmark>>();
+            let snd = snd.map(|mut b| { b.name = snd_replace(b.name.as_str()); b }).collect::<Vec<Benchmark>>();
 
-    let (missed_old, overlap, missed_new) = find_overlap(old, new, |o, n| o.name.cmp(&n.name));
+            (fst, snd)
+        }
+        Some(ref arg_names) => {
+            let name_fst = &arg_names[0];
+            let name_snd = &arg_names[1];
 
-    if !missed_old.is_empty() {
-        err_println!("WARNING: benchmarks present in old but not in new: {:?}",
-                     missed_old.into_iter()
+            let parse_file = |s| parse_benchmarks(File::open(s).unwrap()).into_iter();
+
+            let benchmarks = args.arg_file.iter().flat_map(parse_file);
+
+            let mut fst = Vec::new();
+            let mut snd = Vec::new();
+
+            for mut b in benchmarks {
+                // explicitly moving the name out of b here so it can be assigned later
+                let name = b.name;
+                let mut split = name.splitn(2, "::");
+                // There should always be a string here
+                let implementation = split.next().unwrap();
+                // But there may not be a :: in the string, so the second part may not exist
+                if let Some(test) = split.next() {
+                    if implementation == name_fst {
+                        b.name = fst_replace(test);
+                        fst.push(b);
+                    } else if implementation == name_snd {
+                        b.name = snd_replace(test);
+                        snd.push(b);
+                    }
+                }
+            }
+
+            (fst, snd)
+        }
+    };
+
+    fst.sort_by(|b1, b2| b1.name.cmp(&b2.name));
+    snd.sort_by(|b1, b2| b1.name.cmp(&b2.name));
+
+    let (missed_fst, overlap, missed_snd) = find_overlap(fst, snd, |o, n| o.name.cmp(&n.name));
+
+    if !missed_fst.is_empty() {
+        err_println!("WARNING: benchmarks present in fst but not in snd: {:?}",
+                     missed_fst.into_iter()
                          .map(|o| o.name)
                          .collect::<Vec<String>>());
     }
-    if !missed_new.is_empty() {
-        err_println!("WARNING: benchmarks present in new but not in old: {:?}",
-                     missed_new.into_iter()
+    if !missed_snd.is_empty() {
+        err_println!("WARNING: benchmarks present in snd but not in fst: {:?}",
+                     missed_snd.into_iter()
                          .map(|n| n.name)
                          .collect::<Vec<String>>());
     }
 
     let mut output = TabWriter::new(io::stdout());
 
-    write!(output,
-           "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
-           args.arg_old_file,
-           args.arg_new_file)
-        .unwrap();
+    match args.arg_name {
+        Some(arg_names) => {
+            write!(output,
+                   "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
+                   arg_names[0],
+                   arg_names[1])
+                .unwrap()
+        }
+        None => {
+            write!(output,
+                   "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
+                   args.arg_file[0],
+                   args.arg_file[1])
+                .unwrap()
+        }
+    }
 
-    for (old, new) in overlap {
-        let comparison = old.compare(&new);
-        let name = old.name;
+    for (fst, snd) in overlap {
+        let comparison = fst.compare(&snd);
+        let name = fst.name;
         let percentage = comparison.diff_ratio * 100f64;
         if args.flag_threshold.map_or(false, |threshold| percentage.abs() < threshold as f64) {
             continue;
         }
-        if args.flag_show == Regressions && comparison.diff_ns <= 0 {
-            continue;
-        }
-        if args.flag_show == Improvements && comparison.diff_ns >= 0 {
-            continue;
+        match args.flag_show {
+            Regressions => {
+                if comparison.diff_ns <= 0 {
+                    continue;
+                }
+            }
+            Improvements => {
+                if comparison.diff_ns >= 0 {
+                    continue;
+                }
+            }
+            Both => {}
         }
 
         write!(output, "{}\t", name).unwrap();
-        write!(output, "{}", fmt_thousands_sep(old.ns, ',')).unwrap();
+        write!(output, "{}", fmt_thousands_sep(fst.ns, ',')).unwrap();
         if args.flag_variance {
-            write!(output, " (+/- {})", old.variance).unwrap();
+            write!(output, " (+/- {})", fst.variance).unwrap();
         }
         write!(output, "\t").unwrap();
-        write!(output, "{}", fmt_thousands_sep(new.ns, ',')).unwrap();
+        write!(output, "{}", fmt_thousands_sep(snd.ns, ',')).unwrap();
         if args.flag_variance {
-            write!(output, " (+/- {})", new.variance).unwrap();
+            write!(output, " (+/- {})", snd.variance).unwrap();
         }
         write!(output, "\t").unwrap();
         if comparison.diff_ns < 0 {
