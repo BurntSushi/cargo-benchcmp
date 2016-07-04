@@ -64,19 +64,28 @@ const BENCHMARK_REGEX: &'static str = concat!(r#"test\s+(?P<name>\S+)\s+"#,
 
 impl Benchmark {
     /// Parses a single benchmark line into a Benchmark.
-    fn parse(line: String) -> Option<Benchmark> {
+    fn parse(line: String, name_filter: &Option<Regex>) -> Option<Benchmark> {
         lazy_static! {
-        static ref RE: Regex = Regex::new(BENCHMARK_REGEX).unwrap();
-    }
+            static ref RE: Regex = Regex::new(BENCHMARK_REGEX).unwrap();
+        }
         RE.captures(line.as_str()).map(|c| {
             fn drop_commas_and_parse(s: &str) -> Option<usize> {
                 drop_commas(s).parse::<usize>().ok()
             }
-            Benchmark {
-                name: c.name("name").unwrap().into(),
-                ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
-                variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
-                throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
+            if let &Some(ref regex) = name_filter {
+                Benchmark {
+                    name: regex.replace(c.name("name").unwrap(), ""),
+                    ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
+                    variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
+                    throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
+                }
+            } else {
+                Benchmark {
+                    name: c.name("name").unwrap().into(),
+                    ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
+                    variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
+                    throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
+                }
             }
         })
     }
@@ -113,7 +122,7 @@ fn drop_commas(s: &str) -> String {
         .collect::<String>()
 }
 
-fn parse_benchmarks(all_benchmarks: File) -> Vec<Benchmark> {
+fn parse_benchmarks(all_benchmarks: File, regex: Option<Regex>) -> Vec<Benchmark> {
     let reader = BufReader::new(all_benchmarks);
 
     let lines = reader.lines().skip_while(|r| match *r {
@@ -121,7 +130,9 @@ fn parse_benchmarks(all_benchmarks: File) -> Vec<Benchmark> {
         _ => true,
     });
 
-    lines.filter_map(Result::ok).filter_map(Benchmark::parse).collect()
+    lines.filter_map(Result::ok)
+        .filter_map(|line: String| Benchmark::parse(line, &regex))
+        .collect()
 }
 
 /// Takes two *sorted* vectors and a comparison function
@@ -142,7 +153,8 @@ fn find_overlap<F, T>(mut left: Vec<T>,
     loop {
         match (left.pop(), right.pop()) {
             (Some(left_item), Some(right_item)) => {
-                match fun(&left_item, &right_item) {
+                // sorted from small to large but pop takes from the end (large) side!
+                match fun(&right_item, &left_item) {
                     Less => {
                         res_left.push(left_item);
                         right.push(right_item);
@@ -234,11 +246,30 @@ fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
-    let mut old = parse_benchmarks(File::open(args.arg_old_file.clone()).unwrap());
-    let mut new = parse_benchmarks(File::open(args.arg_new_file.clone()).unwrap());
+    let old_regex = args.flag_strip_old.and_then(|s| {
+        match Regex::new(s.as_str()) {
+            Ok(re) => Some(re),
+            Err(e) => {
+                err_println!("ERROR: strip_old: {}", e);
+                std::process::exit(1);
+            }
+        }
+    });
+    let new_regex = args.flag_strip_new.and_then(|s| {
+        match Regex::new(s.as_str()) {
+            Ok(re) => Some(re),
+            Err(e) => {
+                err_println!("ERROR: strip_new: {}", e);
+                std::process::exit(1);
+            }
+        }
+    });
 
-    old.sort_by_key(|b| b.name.clone());
-    new.sort_by_key(|b| b.name.clone());
+    let mut old = parse_benchmarks(File::open(args.arg_old_file.clone()).unwrap(), old_regex);
+    let mut new = parse_benchmarks(File::open(args.arg_new_file.clone()).unwrap(), new_regex);
+
+    old.sort_by(|b1, b2| b1.name.cmp(&b2.name));
+    new.sort_by(|b1, b2| b1.name.cmp(&b2.name));
 
     let (missed_old, overlap, missed_new) = find_overlap(old, new, |o, n| o.name.cmp(&n.name));
 
