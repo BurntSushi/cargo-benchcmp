@@ -1,15 +1,20 @@
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
 
+/// Returns what's left of the left vector and right vector that doesn't overlap,
+///  and the overlap as a vector of pairs
+pub struct Overlap<T> {
+    pub left: Vec<T>,
+    pub overlap: Vec<(T, T)>,
+    pub right: Vec<T>,
+}
+
 /// Takes two *sorted* vectors and a comparison function
 /// Gives back a tuple of vectors:
 ///  - one for the elements unique to the first vector
 ///  - one for the pairs of elements found equal
 ///  - one of the elements unique to the second vector
-pub fn find_overlap<F, T>(mut left: Vec<T>,
-                          mut right: Vec<T>,
-                          mut fun: F)
-                          -> (Vec<T>, Vec<(T, T)>, Vec<T>)
+pub fn find_overlap<F, T>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Overlap<T>
     where F: FnMut(&T, &T) -> Ordering
 {
     let mut res_left = Vec::new();
@@ -38,7 +43,11 @@ pub fn find_overlap<F, T>(mut left: Vec<T>,
         }
     }
 
-    (res_left, overlap, res_right)
+    Overlap {
+        left: res_left,
+        overlap: overlap,
+        right: res_right,
+    }
 }
 
 fn drop_commas(s: &str) -> String {

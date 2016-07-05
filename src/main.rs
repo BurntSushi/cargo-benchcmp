@@ -85,7 +85,8 @@ macro_rules! create_replace_fn {
 }
 
 // The create_replace_fn macro should use Box::new(String::from), but the compiler's type inference
-//  can't handle it. 
+//  can't handle it.
+#[allow(unknown_lints)]
 #[allow(redundant_closure)]
 fn main() {
     use ShowOption::*;
@@ -150,16 +151,22 @@ fn main() {
     fst.sort_by(|b1, b2| b1.name.cmp(&b2.name));
     snd.sort_by(|b1, b2| b1.name.cmp(&b2.name));
 
-    let (missed_fst, overlap, missed_snd) = find_overlap(fst, snd, |o, n| o.name.cmp(&n.name));
+    let overlap = find_overlap(fst, snd, |o, n| o.name.cmp(&n.name));
 
-    warn_missing(missed_fst, "WARNING: benchmarks present in fst but not in snd: {:?}");
-    warn_missing(missed_snd, "WARNING: benchmarks present in snd but not in fst: {:?}");
+    warn_missing(overlap.left,
+                 "WARNING: benchmarks present in fst but not in snd: {:?}");
+    warn_missing(overlap.right,
+                 "WARNING: benchmarks present in snd but not in fst: {:?}");
+
+    let overlap = overlap.overlap;
 
     let mut output = TabWriter::new(io::stdout());
 
-    write!(output, "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
+    write!(output,
+           "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
            names[0],
-           names[1]).unwrap();
+           names[1])
+        .unwrap();
 
     for comparison in overlap.into_iter().map(|(f, s)| f.compare(s)) {
         let trunc_abs_per = (comparison.diff_ratio * 100f64).abs().trunc() as u8;
@@ -179,9 +186,9 @@ fn main() {
 fn warn_missing(v: Vec<Benchmark>, s: &str) {
     if !v.is_empty() {
         err_println!("{}: {:?}",
-            s,
-            v.into_iter()
-                .map(|n| n.name)
-                .collect::<Vec<String>>());
+                     s,
+                     v.into_iter()
+                         .map(|n| n.name)
+                         .collect::<Vec<String>>());
     }
 }
