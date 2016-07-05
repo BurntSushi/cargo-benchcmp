@@ -103,5 +103,5 @@ pub fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item = Benchmark>>
     });
 
     Box::new(lines.filter_map(Result::ok)
-        .filter_map(|line: String| Benchmark::parse(line)))
+        .filter_map(Benchmark::parse))
 }

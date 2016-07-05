@@ -84,6 +84,9 @@ macro_rules! create_replace_fn {
     }}
 }
 
+// The create_replace_fn macro should use Box::new(String::from), but the compiler's type inference
+//  can't handle it. 
+#[allow(redundant_closure)]
 fn main() {
     use ShowOption::*;
 
