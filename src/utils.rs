@@ -41,6 +41,16 @@ pub fn find_overlap<F, T>(mut left: Vec<T>,
     (res_left, overlap, res_right)
 }
 
+fn drop_commas(s: &str) -> String {
+    s.chars()
+        .filter(|&b| b != ',')
+        .collect::<String>()
+}
+
+pub fn drop_commas_and_parse(s: &str) -> Option<usize> {
+    drop_commas(s).parse::<usize>().ok()
+}
+
 // The following code has been picked from the Rust programming language main repository:
 // https://github.com/rust-lang/rust/blob/20183f498fbd8465859bf47611e1165768b9cc59/src/libtest/lib.rs#L664-L686
 // To comply with the license of the code, the license is copied here. It only applies to the
@@ -71,7 +81,7 @@ pub fn find_overlap<F, T>(mut left: Vec<T>,
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-//
+
 // Format a number with thousands separators
 pub fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     use std::fmt::Write;
@@ -94,14 +104,4 @@ pub fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     }
 
     output
-}
-
-fn drop_commas(s: &str) -> String {
-    s.chars()
-        .filter(|&b| b != ',')
-        .collect::<String>()
-}
-
-pub fn drop_commas_and_parse(s: &str) -> Option<usize> {
-    drop_commas(s).parse::<usize>().ok()
 }
