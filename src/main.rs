@@ -27,9 +27,9 @@ The second version takes two names of implementations and one or more files,
 and compares the common bench-tests of the two implementations based on the
 name scheme "implementation::test".
 
-Usage: cargo-benchcmp [options] <file> <file>
-       cargo-benchcmp [options] <name> <name> [--] <file>...
-       cargo-benchcmp -h | --help
+Usage: cargo benchcmp [options] <file> <file>
+       cargo benchcmp [options] <name> <name> [--] <file>...
+       cargo benchcmp -h | --help
 
 
 Options:
