@@ -66,6 +66,22 @@ impl Benchmark {
             diff_ratio: diff_ratio,
         }
     }
+
+    fn fmt_ns(&self, variance: bool) -> String {
+        use std::fmt::Write;
+
+        let mut res = String::new();
+
+        res.push_str(fmt_thousands_sep(self.ns, ',').as_str());
+        if variance {
+            res.write_fmt(format_args!(" (+/- {})", self.variance)).unwrap();
+        }
+        if let Some(throughput) = self.throughput {
+            res.write_fmt(format_args!(" ({} MB/s)", throughput)).unwrap();
+        }
+
+        res
+    }
 }
 
 impl Comparison {
@@ -75,17 +91,9 @@ impl Comparison {
         }
         w!("{}\t", self.fst.name);
 
-        w!("{}", fmt_thousands_sep(self.fst.ns, ','));
-        if variance {
-            w!(" (+/- {})", self.fst.variance);
-        }
-        w!("\t");
+        w!("{}\t", self.fst.fmt_ns(variance));
 
-        w!("{}", fmt_thousands_sep(self.snd.ns, ','));
-        if variance {
-            w!(" (+/- {})", self.snd.variance);
-        }
-        w!("\t");
+        w!("{}\t", self.snd.fmt_ns(variance));
 
         if self.diff_ns < 0 {
             w!("-");
