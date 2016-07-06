@@ -31,18 +31,21 @@ pub struct Comparison {
     pub diff_ratio: f64,
 }
 
-const BENCHMARK_REGEX: &'static str = concat!(r#"test\s+(?P<name>\S+)\s+"#,
-                                              r#"... bench:\s+(?P<ns>[0-9,]+)\s+ns/iter"#,
-                                              r#"\s+\(\+/-\s+(?P<variance>[0-9,]+)\)"#,
-                                              r#"(?:\s+=\s+(?P<throughput>[0-9,]+))?"#);
-
 impl Benchmark {
     /// Parses a single benchmark line into a Benchmark.
     pub fn parse(line: String) -> Option<Benchmark> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(BENCHMARK_REGEX).unwrap();
+            static ref BENCHMARK_REGEX: Regex =
+                Regex::new(r##"(?x)                            # ignoring whitespace and comments
+                    test\s+(?P<name>\S+)                       # test   mod::test_name
+                    \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter #    ... bench: 1234   ns/iter
+                    \s+\(\+/-\s+(?P<variance>[0-9,]+)\)        #    (+/- 4321)
+                    (?:\s+=\s+(?P<throughput>[0-9,]+))?        #    =   2314
+                    "##)
+                    .unwrap();
         }
-        RE.captures(line.as_str()).map(|c| {
+
+        BENCHMARK_REGEX.captures(line.as_str()).map(|c| {
             Benchmark {
                 name: c.name("name").unwrap().into(),
                 ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
@@ -88,6 +91,7 @@ impl Comparison {
             w!("-");
         }
         w!("{}\t", fmt_thousands_sep(self.diff_ns.abs() as usize, ','));
+
         w!("{:.2}%\n", self.diff_ratio * 100f64);
 
         Ok(())
