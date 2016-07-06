@@ -27,19 +27,20 @@ The second version takes two names of implementations and one or more files,
 and compares the common bench-tests of the two implementations based on the
 name scheme "implementation::test".
 
-Usage: cargo benchcmp [options] <file> <file>
-       cargo benchcmp [options] <name> <name> [--] <file>...
-       cargo benchcmp -h | --help
+Usage:
+    cargo benchcmp [options] <file> <file>
+    cargo benchcmp [options] <name> <name> [--] <file>...
+    cargo benchcmp -h | --help
 
 
 Options:
-  -h, --help            show this help message and exit
-  --threshold <n>       only show comparisons with a percentage change greater
-                        than this threshold
-  --variance            show variance
-  --show <option>       show regressions, improvements or both [default: both]
-  --strip-fst <regex>   a regex to strip from first benchmarks' names
-  --strip-snd <regex>   a regex to strip from second benchmarks' names
+    -h, --help           show this help message and exit
+    --threshold <n>      only show comparisons with a percentage change greater
+                         than this threshold
+    --variance           show variance
+    --show <option>      show regressions, improvements or both [default: both]
+    --strip-fst <regex>  a regex to strip from first benchmarks' names
+    --strip-snd <regex>  a regex to strip from second benchmarks' names
 "#;
 
 #[derive(Debug, RustcDecodable)]
