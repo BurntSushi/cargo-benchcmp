@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::cmp::Ordering::{Less, Equal, Greater};
 
 /// Returns what's left of the left vector and right vector that doesn't overlap,
 ///  and the overlap as a vector of pairs
@@ -17,6 +16,8 @@ pub struct Overlap<T> {
 pub fn find_overlap<F, T>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Overlap<T>
     where F: FnMut(&T, &T) -> Ordering
 {
+    use std::cmp::Ordering::{Less, Equal, Greater};
+
     let mut res_left = Vec::new();
     let mut res_right = Vec::new();
     let mut overlap = Vec::new();
