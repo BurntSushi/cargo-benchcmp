@@ -23,9 +23,8 @@ const USAGE: &'static str = r#"
 Compare Rust micro-benchmarks by saving the output of the benchmark to file
 and providing it into this command.
 The first version takes two file and compares the common bench-tests.
-The second version takes two names of implementations and one or more files,
-and compares the common bench-tests of the two implementations based on the
-name scheme "implementation::test".
+The second version takes two module names and one or more files,
+and compares the common bench-tests of the two modules.
 
 Usage:
     cargo benchcmp [options] <file> <file>
