@@ -29,7 +29,7 @@ name scheme "implementation::test".
 
 Usage:
     cargo benchcmp [options] <file> <file>
-    cargo benchcmp [options] <name> <name> [--] <file>...
+    cargo benchcmp [options] <name> <name> <file>...
     cargo benchcmp -h | --help
 
 

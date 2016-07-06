@@ -40,7 +40,7 @@ impl Benchmark {
                     test\s+(?P<name>\S+)                       # test   mod::test_name
                     \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter #    ... bench: 1234   ns/iter
                     \s+\(\+/-\s+(?P<variance>[0-9,]+)\)        #    (+/- 4321)
-                    (?:\s+=\s+(?P<throughput>[0-9,]+))?        #    =   2314
+                    (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?  #    =   2314
                     "##)
                     .unwrap();
         }
