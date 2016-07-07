@@ -51,12 +51,14 @@ pub fn find_overlap<F, T>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Ov
     }
 }
 
+/// Drops all commas in a string
 fn drop_commas(s: &str) -> String {
     s.chars()
         .filter(|&b| b != ',')
         .collect::<String>()
 }
 
+/// Drops all commas in a string and parses it as a unsigned integer
 pub fn drop_commas_and_parse(s: &str) -> Option<usize> {
     drop_commas(s).parse::<usize>().ok()
 }
@@ -92,7 +94,7 @@ pub fn drop_commas_and_parse(s: &str) -> Option<usize> {
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Format a number with thousands separators
+/// Format a number with thousands separators
 pub fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     use std::fmt::Write;
     let mut output = String::new();

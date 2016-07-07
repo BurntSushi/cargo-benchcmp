@@ -1,6 +1,8 @@
 use regex::Regex;
 use tabwriter::TabWriter;
 
+use iterator::BoxedIterator;
+
 use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -67,6 +69,10 @@ impl Benchmark {
         }
     }
 
+    pub fn filter_name(&mut self, re: &Regex) {
+        self.name = re.replace(self.name.as_str(), "");
+    }
+
     fn fmt_ns(&self, variance: bool) -> String {
         use std::fmt::Write;
 
@@ -106,7 +112,7 @@ impl Comparison {
     }
 }
 
-pub fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item = Benchmark>> {
+pub fn parse_benchmarks(all_benchmarks: File) -> BoxedIterator<Benchmark> {
     let reader = BufReader::new(all_benchmarks);
 
     let lines = reader.lines().skip_while(|r| match *r {
@@ -114,6 +120,6 @@ pub fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item = Benchmark>>
         _ => true,
     });
 
-    Box::new(lines.filter_map(Result::ok)
+    BoxedIterator::new(lines.filter_map(Result::ok)
         .filter_map(Benchmark::parse))
 }
