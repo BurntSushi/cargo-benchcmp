@@ -1,7 +1,6 @@
 use regex::Regex;
-use tabwriter::TabWriter;
+use prettytable::row::Row;
 
-use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
@@ -89,24 +88,24 @@ impl Benchmark {
 }
 
 impl Comparison {
-    pub fn write<W: Write>(&self, tw: &mut TabWriter<W>, variance: bool) -> io::Result<()> {
-        macro_rules! w {
-            ($($tt:tt)*) => { try!(write!(tw, $($tt)*)) }
-        }
-        w!("{}\t", self.fst.name);
+    pub fn to_row(&self, variance: bool) -> Row {
 
-        w!("{}\t", self.fst.fmt_ns(variance));
+        let name = format!("{}", self.fst.name);
 
-        w!("{}\t", self.snd.fmt_ns(variance));
+        let fst_ns = format!("{}", self.fst.fmt_ns(variance));
 
-        if self.diff_ns < 0 {
-            w!("-");
-        }
-        w!("{}\t", fmt_thousands_sep(self.diff_ns.abs() as usize, ','));
+        let snd_ns = format!("{}", self.snd.fmt_ns(variance));
 
-        w!("{:.2}%\n", self.diff_ratio * 100f64);
+        let diff_ns = fmt_thousands_sep(self.diff_ns.abs() as usize, ',');
+        let diff_ns = if self.diff_ns < 0 {
+            format!("-{}", diff_ns)
+        } else {
+            diff_ns
+        };
 
-        Ok(())
+        let diff_ratio = format!("{:.2}%", self.diff_ratio * 100f64);
+
+        row![name, fst_ns, snd_ns, r->diff_ns, r->diff_ratio]
     }
 }
 

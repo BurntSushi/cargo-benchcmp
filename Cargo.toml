@@ -6,6 +6,6 @@ version = "0.1.0"
 [dependencies]
 docopt = "0.6.81"
 lazy_static = "0.2.1"
+prettytable-rs = "0.6.2"
 regex = "0.1.71"
 rustc-serialize = "0.3.19"
-tabwriter = "0.1.25"

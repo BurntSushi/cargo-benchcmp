@@ -3,7 +3,8 @@ extern crate docopt;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
-extern crate tabwriter;
+#[macro_use]
+extern crate prettytable;
 
 mod benchmark;
 mod utils;
@@ -11,7 +12,8 @@ mod error;
 
 use docopt::Docopt;
 use regex::Regex;
-use tabwriter::TabWriter;
+use prettytable::Table;
+use prettytable::format;
 
 use benchmark::{Benchmark, parse_benchmarks};
 use utils::find_overlap;
@@ -75,6 +77,7 @@ fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
+
     let pairs = match read_benchmarks(&args) {
         Err(e) => {
             err_println!("{}", e);
@@ -92,13 +95,15 @@ fn write_pairs(args: Args, pairs: Vec<(Benchmark, Benchmark)>) {
 
     let names = args.arg_name.map_or(args.arg_file, |a| a.to_vec());
 
-    let mut output = TabWriter::new(io::stdout());
+    let mut output = Table::new();
+    output.set_format(*format::consts::FORMAT_CLEAN);
 
-    write!(output,
-           "name\t{} ns/iter\t{} ns/iter\tdiff ns/iter\tdiff %\n",
-           names[0],
-           names[1])
-        .unwrap();
+    output.add_row(row![
+        d->"name",
+        format!("{} ns/iter", names[0]),
+        format!("{} ns/iter", names[1]),
+        r->"diff ns/iter",
+        r->"diff %"]);
 
     for comparison in pairs.into_iter().map(|(f, s)| f.compare(s)) {
         let trunc_abs_per = (comparison.diff_ratio * 100f64).abs().trunc() as u8;
@@ -109,10 +114,10 @@ fn write_pairs(args: Args, pairs: Vec<(Benchmark, Benchmark)>) {
             continue;
         }
 
-        comparison.write(&mut output, args.flag_variance).unwrap();
+        output.add_row(comparison.to_row(args.flag_variance));
     }
 
-    output.flush().unwrap();
+    output.printstd();
 }
 
 /// Read the benchmarks,
