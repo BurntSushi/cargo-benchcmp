@@ -8,7 +8,6 @@ extern crate tabwriter;
 mod benchmark;
 mod utils;
 mod error;
-mod iterator;
 
 use docopt::Docopt;
 use regex::Regex;
@@ -17,7 +16,6 @@ use tabwriter::TabWriter;
 use benchmark::{Benchmark, parse_benchmarks};
 use utils::find_overlap;
 use error::Result;
-use iterator::BoxedIterator;
 
 use std::io;
 use std::io::prelude::*;
@@ -122,20 +120,21 @@ fn write_pairs(args: Args, pairs: Vec<(Benchmark, Benchmark)>) {
 ///  do the regex replace,
 ///  and find the benchmarks that overlap.
 fn read_benchmarks(args: &Args) -> Result<Vec<(Benchmark, Benchmark)>> {
-    let files: std::result::Result<BoxedIterator<File>, io::Error> =
+    let files: std::result::Result<Vec<File>, io::Error> =
         args.arg_file.iter().map(File::open).collect();
 
-    let mut files = try!(files);
+    let files: Vec<File> = try!(files);
 
     let (fst, snd) = match args.arg_name {
         None => {
-            let fst = parse_benchmarks(files.next().unwrap());
-            let snd = parse_benchmarks(files.next().unwrap());
+            let mut benches_iter = files.into_iter().map(parse_benchmarks);
+            let fst = benches_iter.next().unwrap();
+            let snd = benches_iter.next().unwrap();
 
             (fst, snd)
         }
         Some(ref names) => {
-            let benchmarks = files.flat_map(parse_benchmarks);
+            let benchmarks = files.into_iter().flat_map(parse_benchmarks);
 
             let mut fst = Vec::new();
             let mut snd = Vec::new();
@@ -156,7 +155,7 @@ fn read_benchmarks(args: &Args) -> Result<Vec<(Benchmark, Benchmark)>> {
                 }
             }
 
-            (BoxedIterator::new(fst.into_iter()), BoxedIterator::new(snd.into_iter()))
+            (Box::new(fst.into_iter()) as Box<Iterator<Item=Benchmark>>, Box::new(snd.into_iter()) as Box<Iterator<Item=Benchmark>>)
         }
     };
 
@@ -177,9 +176,9 @@ fn read_benchmarks(args: &Args) -> Result<Vec<(Benchmark, Benchmark)>> {
 }
 
 /// Filter the names in every benchmark, based on the regex string
-fn strip_names(benches: BoxedIterator<Benchmark>,
-                strip: &Option<String>)
-                -> Result<Vec<Benchmark>> {
+fn strip_names<I: Iterator<Item=Benchmark>>(benches: I,
+               strip: &Option<String>)
+               -> Result<Vec<Benchmark>> {
     match *strip {
         None => Ok(benches.collect()),
         Some(ref s) => {

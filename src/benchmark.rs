@@ -1,8 +1,6 @@
 use regex::Regex;
 use tabwriter::TabWriter;
 
-use iterator::BoxedIterator;
-
 use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -112,7 +110,7 @@ impl Comparison {
     }
 }
 
-pub fn parse_benchmarks(all_benchmarks: File) -> BoxedIterator<Benchmark> {
+pub fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item=Benchmark>> {
     let reader = BufReader::new(all_benchmarks);
 
     let lines = reader.lines().skip_while(|r| match *r {
@@ -120,6 +118,6 @@ pub fn parse_benchmarks(all_benchmarks: File) -> BoxedIterator<Benchmark> {
         _ => true,
     });
 
-    BoxedIterator::new(lines.filter_map(Result::ok)
+    Box::new(lines.filter_map(Result::ok)
         .filter_map(Benchmark::parse))
 }
