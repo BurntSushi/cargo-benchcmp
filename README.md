@@ -24,7 +24,8 @@ bench::easy1_1K                                293 (3,494 MB/s)             241 
 
 If you want to compare the same benchmark run in multiple ways, reuse the names
 in different modules. Then your benchmark output will look like `mod::test`,
-and you can instruct benchcmp to compare the two modules with:
+and you can instruct benchcmp to compare the two modules by naming them first,
+and then naming the file:
 
 ```
 $ cargo benchcmp dense_boxed dense aho-corasick
