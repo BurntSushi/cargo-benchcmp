@@ -173,9 +173,9 @@ fn read_benchmarks(args: &Args) -> Result<Vec<(Benchmark, Benchmark)>> {
     let overlap = find_overlap(fst, snd, |b1, b2| b1.name.cmp(&b2.name));
 
     warn_missing(overlap.left,
-                 "WARNING: benchmarks present in fst but not in snd: {:?}");
+                 "WARNING: benchmarks present in fst but not in snd");
     warn_missing(overlap.right,
-                 "WARNING: benchmarks present in snd but not in fst: {:?}");
+                 "WARNING: benchmarks present in snd but not in fst");
 
     Ok(overlap.overlap)
 }
