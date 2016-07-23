@@ -32,10 +32,10 @@ const USAGE: &'static str = r#"
 Compares Rust micro-benchmark results.
 
 Usage:
-    cargo-benchcmp [options] <old> <new>
-    cargo-benchcmp [options] <old> <new> <file>
-    cargo-benchcmp -h | --help
-    cargo-benchcmp --version
+    cargo benchcmp [options] <old> <new>
+    cargo benchcmp [options] <old> <new> <file>
+    cargo benchcmp -h | --help
+    cargo benchcmp --version
 
 The first version takes two files and compares the common benchmarks.
 

@@ -1,4 +1,4 @@
-cargo-benchcmp
+cargo benchcmp
 ==============
 A small utility for comparing micro-benchmarks produced by `cargo bench`. The
 utility takes as input two sets of micro-benchmarks (one "old" and the other
@@ -12,7 +12,7 @@ Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org).
 
 ### Installation
 
-`cargo-benchcmp` can be installed with `cargo install`:
+`cargo benchcmp` can be installed with `cargo install`:
 
 ```
 $ cargo install cargo-benchcmp
