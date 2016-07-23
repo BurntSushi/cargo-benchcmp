@@ -4,9 +4,9 @@ A small utility for comparing micro-benchmarks produced by `cargo bench`. The
 utility takes as input two sets of micro-benchmarks (one "old" and the other
 "new") and shows as output a comparison between each benchmark.
 
-[![Linux build status](https://api.travis-ci.org/BurntSushi/snap.png)](https://travis-ci.org/BurntSushi/cargo-benchcmp)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/snap?svg=true)](https://ci.appveyor.com/project/BurntSushi/cargo-benchcmp)
-[![](http://meritbadge.herokuapp.com/snap)](https://crates.io/crates/cargo-benchcmp)
+[![Linux build status](https://api.travis-ci.org/BurntSushi/cargo-benchcmp.png)](https://travis-ci.org/BurntSushi/cargo-benchcmp)
+[![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/cargo-benchcmp?svg=true)](https://ci.appveyor.com/project/BurntSushi/cargo-benchcmp)
+[![](http://meritbadge.herokuapp.com/cargo-benchcmp)](https://crates.io/crates/cargo-benchcmp)
 
 Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org).
 
