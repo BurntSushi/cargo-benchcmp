@@ -1,6 +1,26 @@
+cargo-benchcmp
+==============
 A small utility for comparing micro-benchmarks produced by `cargo bench`. The
 utility takes as input two sets of micro-benchmarks (one "old" and the other
 "new") and shows as output a comparison between each benchmark.
+
+[![Linux build status](https://api.travis-ci.org/BurntSushi/snap.png)](https://travis-ci.org/BurntSushi/cargo-benchcmp)
+[![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/snap?svg=true)](https://ci.appveyor.com/project/BurntSushi/cargo-benchcmp)
+[![](http://meritbadge.herokuapp.com/snap)](https://crates.io/crates/cargo-benchcmp)
+
+Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org).
+
+### Installation
+
+`cargo-benchcmp` can be installed with `cargo install`:
+
+```
+$ cargo install cargo-benchcmp
+```
+
+The resulting binary should then be in `$HOME/.cargo/bin`.
+
+### Usage
 
 The first argument should be the "old" benchmarks and the second argument
 should be the "new" benchmarks:
