@@ -1,8 +1,6 @@
 A small utility for comparing micro-benchmarks produced by `cargo bench`. The
-utility takes as input two sets of micro-benchmarks and shows as output a
-comparison between each benchmark.
-Alternatively, it can compare different implementations if they have different
-module names with the same benchmarks.
+utility takes as input two sets of micro-benchmarks (one "old" and the other
+"new") and shows as output a comparison between each benchmark.
 
 The first argument should be the "old" benchmarks and the second argument
 should be the "new" benchmarks:
@@ -23,12 +21,18 @@ bench::easy1_1K                                293 (3,494 MB/s)             241 
 ```
 
 If you want to compare the same benchmark run in multiple ways, reuse the names
-in different modules. Then your benchmark output will look like `mod::test`,
-and you can instruct benchcmp to compare the two modules by naming them first,
-and then naming the file:
+in different modules. Then your benchmark output will look like:
 
 ```
-$ cargo benchcmp dense_boxed dense aho-corasick
+module1::ac_two_one_prefix_byte_random   ...
+module2::ac_two_one_prefix_byte_random   ...
+```
+
+You can then instruct benchcmp to compare the two modules by providing the two
+prefixes, followed by the file containing the output:
+
+```
+$ cargo benchcmp module1:: module2:: benchmark-output
 name                                dense_boxed ns/iter  dense ns/iter      diff ns/iter  diff %
 ac_two_one_prefix_byte_random       21,041 (475 MB/s)    16,741 (597 MB/s)  -4,300        -20.44%
 ac_two_one_prefix_byte_no_match     354 (28248 MB/s)     349 (28653 MB/s)   -5            -1.41%

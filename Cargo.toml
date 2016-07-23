@@ -1,11 +1,17 @@
 [package]
-authors = ["Jeff Smits <jeff.smits@gmail.com>"]
+authors = ["Andrew Gallant <jamslam@gmail.com>"]
 name = "cargo-benchcmp"
 version = "0.1.0"
+description = "A utility for comparing Rust micro-benchmark output."
+homepage = "https://github.com/BurntSushi/cargo-benchcmp"
+repository = "https://github.com/BurntSushi/cargo-benchcmp"
+readme = "README.md"
+keywords = ["benchmark", "compare", "bench", "micro"]
+license = "Unlicense/MIT"
 
 [dependencies]
 docopt = "0.6.81"
 lazy_static = "0.2.1"
 prettytable-rs = "0.6.2"
-regex = "0.1.71"
+regex = "0.1.73"
 rustc-serialize = "0.3.19"

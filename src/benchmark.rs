@@ -1,19 +1,174 @@
-use regex::Regex;
+use std::cmp;
+use std::str::FromStr;
+
 use prettytable::row::Row;
+use regex::Regex;
 
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::fs::File;
+/// Two sets of benchmarks that are comparable but haven't been paired up yet.
+#[derive(Clone, Debug)]
+pub struct Benchmarks {
+    old: Vec<Benchmark>,
+    new: Vec<Benchmark>,
+}
 
-use utils::{drop_commas_and_parse, fmt_thousands_sep};
+impl Benchmarks {
+    /// Create a new empty set of comparable benchmarks.
+    pub fn new() -> Benchmarks {
+        Benchmarks { old: vec![], new: vec![] }
+    }
+
+    /// Add an old benchmark.
+    pub fn add_old(&mut self, b: Benchmark) {
+        self.old.push(b);
+    }
+
+    /// Add a new benchmark.
+    pub fn add_new(&mut self, b: Benchmark) {
+        self.new.push(b);
+    }
+
+    /// Create a set of pairwise comparisons between benchmarks.
+    ///
+    /// The old and new benchmarks are paired based on whether they have
+    /// equivalent names. Benchmarks without a pair are marked as unpaired.
+    pub fn paired(self) -> PairedBenchmarks {
+        PairedBenchmarks::from(self)
+    }
+}
+
+/// PairedBenchmarks is a set of paired benchmarks.
+///
+/// This also provides access to unpaired benchmarks.
+#[derive(Clone, Debug)]
+pub struct PairedBenchmarks {
+    cmps: Vec<Comparison>,
+    unpaired_old: Vec<Benchmark>,
+    unpaired_new: Vec<Benchmark>,
+}
+
+impl From<Benchmarks> for PairedBenchmarks {
+    fn from(mut benches: Benchmarks) -> PairedBenchmarks {
+        benches.old.sort();
+        benches.new.sort();
+        let ov = Overlap::find(benches.old, benches.new, Benchmark::cmp);
+        let cmps = ov.overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
+        PairedBenchmarks {
+            cmps: cmps,
+            unpaired_old: ov.left,
+            unpaired_new: ov.right,
+        }
+    }
+}
+
+impl PairedBenchmarks {
+    /// Returns all pairwise benchmark comparisons.
+    ///
+    /// Each comparison provides access to the old and new benchmarks.
+    pub fn comparisons(&self) -> &[Comparison] {
+        &self.cmps
+    }
+
+    /// Returns all benchmarks that were in the old set that were not found
+    /// in the new set.
+    pub fn missing_old(&self) -> &[Benchmark] {
+        &self.unpaired_old
+    }
+
+    /// Returns all benchmarks that were in the new set that were not found
+    /// in the old set.
+    pub fn missing_new(&self) -> &[Benchmark] {
+        &self.unpaired_new
+    }
+}
 
 /// All extractable data from a single micro-benchmark.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Benchmark {
     pub name: String,
-    pub ns: usize,
-    pub variance: usize,
-    pub throughput: Option<usize>,
+    pub ns: u64,
+    pub variance: u64,
+    pub throughput: Option<u64>,
+}
+
+impl Eq for Benchmark {}
+
+impl PartialEq for Benchmark {
+    fn eq(&self, other: &Benchmark) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Ord for Benchmark {
+    fn cmp(&self, other: &Benchmark) -> cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl PartialOrd for Benchmark {
+    fn partial_cmp(&self, other: &Benchmark) -> Option<cmp::Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+lazy_static! {
+    static ref BENCHMARK_REGEX: Regex = Regex::new(r##"(?x)
+        test\s+(?P<name>\S+)                        # test   mod::test_name
+        \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter  # ... bench: 1234 ns/iter
+        \s+\(\+/-\s+(?P<variance>[0-9,]+)\)         # (+/- 4321)
+        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314
+    "##).unwrap();
+}
+
+impl FromStr for Benchmark {
+    type Err = ();
+
+    /// Parses a single benchmark line into a Benchmark.
+    fn from_str(line: &str) -> Result<Benchmark, ()> {
+        let caps = match BENCHMARK_REGEX.captures(line) {
+            None => return Err(()),
+            Some(caps) => caps,
+        };
+        let ns = match parse_commas(&caps["ns"]) {
+            None => return Err(()),
+            Some(ns) => ns,
+        };
+        let variance = match parse_commas(&caps["variance"]) {
+            None => return Err(()),
+            Some(variance) => variance,
+        };
+        let throughput = caps.name("throughput").and_then(parse_commas);
+        Ok(Benchmark {
+            name: caps["name"].to_string(),
+            ns: ns,
+            variance: variance,
+            throughput: throughput,
+        })
+    }
+}
+
+impl Benchmark {
+    /// Compares an old benchmark (self) with a new benchmark.
+    pub fn compare(self, new: Benchmark) -> Comparison {
+        let diff_ns = new.ns as i64 - self.ns as i64;
+        let diff_ratio = diff_ns as f64 / self.ns as f64;
+        Comparison {
+            old: self,
+            new: new,
+            diff_ns: diff_ns,
+            diff_ratio: diff_ratio,
+        }
+    }
+
+    fn fmt_ns(&self, variance: bool) -> String {
+        let mut res = commafy(self.ns);
+        if variance {
+            res = format!("{} (+/- {})", res, self.variance);
+        }
+        if let Some(throughput) = self.throughput {
+            res = format!("{} ({} MB/s)", res, throughput);
+        }
+        res
+    }
 }
 
 /// A comparison between an old and a new benchmark.
@@ -22,101 +177,119 @@ pub struct Benchmark {
 /// is slower than a new benchmark, then the difference is negative.
 /// Conversely, if an old benchmark is faster than a new benchmark,
 /// then the difference is positive.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Comparison {
-    pub fst: Benchmark,
-    pub snd: Benchmark,
+    pub old: Benchmark,
+    pub new: Benchmark,
     pub diff_ns: i64,
     pub diff_ratio: f64,
 }
 
-impl Benchmark {
-    /// Parses a single benchmark line into a Benchmark.
-    pub fn parse(line: String) -> Option<Benchmark> {
-        lazy_static! {
-            static ref BENCHMARK_REGEX: Regex =
-                Regex::new(r##"(?x)                            # ignoring whitespace and comments
-                    test\s+(?P<name>\S+)                       # test   mod::test_name
-                    \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter #    ... bench: 1234   ns/iter
-                    \s+\(\+/-\s+(?P<variance>[0-9,]+)\)        #    (+/- 4321)
-                    (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?  #    =   2314
-                    "##)
-                    .unwrap();
-        }
-
-        BENCHMARK_REGEX.captures(line.as_str()).map(|c| {
-            Benchmark {
-                name: c.name("name").unwrap().into(),
-                ns: c.name("ns").and_then(drop_commas_and_parse).unwrap(),
-                variance: c.name("variance").and_then(drop_commas_and_parse).unwrap(),
-                throughput: c.name("throughput").map(|t| drop_commas_and_parse(t).unwrap()),
-            }
-        })
-    }
-
-    /// Compares an old benchmark (self) with a new benchmark.
-    pub fn compare(self, new: Self) -> Comparison {
-        let diff_ns = new.ns as i64 - self.ns as i64;
-        let diff_ratio = diff_ns as f64 / self.ns as f64;
-        Comparison {
-            fst: self,
-            snd: new,
-            diff_ns: diff_ns,
-            diff_ratio: diff_ratio,
-        }
-    }
-
-    pub fn filter_name(&mut self, re: &Regex) {
-        self.name = re.replace(self.name.as_str(), "");
-    }
-
-    fn fmt_ns(&self, variance: bool) -> String {
-        use std::fmt::Write;
-
-        let mut res = String::new();
-
-        res.push_str(fmt_thousands_sep(self.ns, ',').as_str());
-        if variance {
-            res.write_fmt(format_args!(" (+/- {})", self.variance)).unwrap();
-        }
-        if let Some(throughput) = self.throughput {
-            res.write_fmt(format_args!(" ({} MB/s)", throughput)).unwrap();
-        }
-
-        res
-    }
-}
-
 impl Comparison {
+    /// Convert this comparison to a formatted row useful for printing.
+    ///
+    /// The columns of the row are as follows: the name of the benchmark being
+    /// compared, the old measurement, the new measurement, the measurement
+    /// difference and the percent measurement difference. Negative differences
+    /// imply an improvement in performance from old to new.
     pub fn to_row(&self, variance: bool) -> Row {
-
-        let name = format!("{}", self.fst.name);
-
-        let fst_ns = format!("{}", self.fst.fmt_ns(variance));
-
-        let snd_ns = format!("{}", self.snd.fmt_ns(variance));
-
-        let diff_ns = fmt_thousands_sep(self.diff_ns.abs() as usize, ',');
-        let diff_ns = if self.diff_ns < 0 {
-            format!("-{}", diff_ns)
-        } else {
-            diff_ns
-        };
-
+        let name = format!("{}", self.old.name);
+        let fst_ns = format!("{}", self.old.fmt_ns(variance));
+        let snd_ns = format!("{}", self.new.fmt_ns(variance));
         let diff_ratio = format!("{:.2}%", self.diff_ratio * 100f64);
-
+        let diff_ns = {
+            let diff_ns = commafy(self.diff_ns.abs() as u64);
+            if self.diff_ns < 0 {
+                format!("-{}", diff_ns)
+            } else {
+                diff_ns
+            }
+        };
         row![name, fst_ns, snd_ns, r->diff_ns, r->diff_ratio]
     }
 }
 
-pub fn parse_benchmarks(all_benchmarks: File) -> Box<Iterator<Item=Benchmark>> {
-    let reader = BufReader::new(all_benchmarks);
+/// Returns what's left of the left vector and right vector that doesn't
+/// overlap, and the overlap as a vector of pairs
+struct Overlap<T> {
+    left: Vec<T>,
+    overlap: Vec<(T, T)>,
+    right: Vec<T>,
+}
 
-    let lines = reader.lines().skip_while(|r| match *r {
-        Ok(ref s) => s.is_empty(),
-        _ => true,
-    });
+impl<T> Overlap<T> {
+    /// Takes two *sorted* vectors in *ascending* order and a comparison function.
+    ///
+    /// Gives back a tuple of vectors, preserving the original sort order:
+    ///  - one for the elements unique to the first vector
+    ///  - one for the pairs of elements found equal
+    ///  - one of the elements unique to the second vector
+    fn find<F>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Overlap<T>
+    where F: FnMut(&T, &T) -> cmp::Ordering {
+        use std::cmp::Ordering::*;
 
-    Box::new(lines.filter_map(Result::ok)
-        .filter_map(Benchmark::parse))
+        let (mut rleft, mut rright, mut overlap) = (vec![], vec![], vec![]);
+        loop {
+            match (left.pop(), right.pop()) {
+                (None, None) => break,
+                (None, Some(right_item)) => rright.push(right_item),
+                (Some(left_item), None) => rleft.push(left_item),
+                (Some(left_item), Some(right_item)) => {
+                    // sorted from small to large but pop takes from the end!
+                    match fun(&right_item, &left_item) {
+                        Less => {
+                            rleft.push(left_item);
+                            right.push(right_item);
+                        }
+                        Equal => overlap.push((left_item, right_item)),
+                        Greater => {
+                            rright.push(right_item);
+                            left.push(left_item);
+                        }
+                    }
+                }
+            }
+        }
+
+        // We built these in reverse, so reverse them to get original order.
+        rleft.reverse();
+        rright.reverse();
+        overlap.reverse();
+        Overlap {
+            left: rleft,
+            overlap: overlap,
+            right: rright,
+        }
+    }
+}
+
+/// Drops all commas in a string and parses it as a unsigned integer
+fn parse_commas(s: &str) -> Option<u64> {
+    drop_commas(s).parse().ok()
+}
+
+/// Drops all commas in a string
+fn drop_commas(s: &str) -> String {
+    s.chars().filter(|&b| b != ',').collect()
+}
+
+/// Commafy a number as a string.
+fn commafy(n: u64) -> String {
+    let mut with_commas = vec![];
+    let dits: Vec<u8> = n.to_string().into_bytes().into_iter().rev().collect();
+    let mut dits = &*dits;
+    loop {
+        if dits.len() < 3 {
+            with_commas.extend(dits);
+            break;
+        }
+        let piece = &dits[0..3];
+        dits = &dits[3..];
+        with_commas.extend(piece);
+        if piece.len() == 3 && !dits.is_empty() && dits[0] != b'-' {
+            with_commas.push(b',');
+        }
+    }
+    with_commas.reverse();
+    String::from_utf8(with_commas).unwrap()
 }
