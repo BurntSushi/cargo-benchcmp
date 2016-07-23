@@ -1,6 +1,5 @@
 language: rust
 rust:
-  - 1.9
   - stable
   - beta
   - nightly
