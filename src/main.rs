@@ -247,8 +247,8 @@ fn version() -> String {
     }
 }
 
-/// open_file is like File::open, except it gives a better error message when
-/// it fails (i.e., it includes the file path).
+/// `open_file` is like `File::open`, except it gives a better error message
+/// when it fails (i.e., it includes the file path).
 fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
     File::open(&path).map_err(|err| {
         Error::OpenFile {
