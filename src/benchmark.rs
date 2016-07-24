@@ -36,7 +36,7 @@ impl Benchmarks {
     }
 }
 
-/// PairedBenchmarks is a set of paired benchmarks.
+/// `PairedBenchmarks` is a set of paired benchmarks.
 ///
 /// This also provides access to unpaired benchmarks.
 #[derive(Clone, Debug)]
@@ -193,9 +193,9 @@ impl Comparison {
     /// difference and the percent measurement difference. Negative differences
     /// imply an improvement in performance from old to new.
     pub fn to_row(&self, variance: bool) -> Row {
-        let name = format!("{}", self.old.name);
-        let fst_ns = format!("{}", self.old.fmt_ns(variance));
-        let snd_ns = format!("{}", self.new.fmt_ns(variance));
+        let name = &self.old.name;
+        let fst_ns = self.old.fmt_ns(variance);
+        let snd_ns = self.new.fmt_ns(variance);
         let diff_ratio = format!("{:.2}%", self.diff_ratio * 100f64);
         let diff_ns = {
             let diff_ns = commafy(self.diff_ns.abs() as u64);
@@ -280,12 +280,12 @@ fn commafy(n: u64) -> String {
     let mut dits = &*dits;
     loop {
         if dits.len() < 3 {
-            with_commas.extend(dits);
+            with_commas.extend_from_slice(dits);
             break;
         }
         let piece = &dits[0..3];
         dits = &dits[3..];
-        with_commas.extend(piece);
+        with_commas.extend_from_slice(piece);
         if piece.len() == 3 && !dits.is_empty() && dits[0] != b'-' {
             with_commas.push(b',');
         }
