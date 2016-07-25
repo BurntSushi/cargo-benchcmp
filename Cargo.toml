@@ -1,5 +1,8 @@
 [package]
-authors = ["Andrew Gallant <jamslam@gmail.com>"]
+authors = [
+  "Jeff Smits <jeff.smits@gmail.com>",
+  "Andrew Gallant <jamslam@gmail.com>",
+]
 name = "cargo-benchcmp"
 version = "0.1.1"  #:version
 description = "A utility for comparing Rust micro-benchmark output."
