@@ -55,6 +55,7 @@ Options:
     --variance           Show the variance of each benchmark.
     --improvements       Show only improvements.
     --regressions        Show only regressions.
+    --color <when>       Show colored rows: never, always or auto [default: auto]
 "#;
 
 #[derive(Debug, RustcDecodable)]
@@ -66,6 +67,12 @@ struct Args {
     flag_variance: bool,
     flag_improvements: bool,
     flag_regressions: bool,
+    flag_color: When,
+}
+
+#[derive(Debug, RustcDecodable)]
+enum When {
+    Never, Always, Auto
 }
 
 fn main() {
@@ -101,7 +108,12 @@ impl Args {
             }
             output.add_row(c.to_row(self.flag_variance, regression));
         }
-        output.printstd();
+
+        match self.flag_color {
+            When::Auto => output.printstd(),
+            When::Never => try!(output.print(&mut io::stdout())),
+            When::Always => output.print_tty(true),
+        }
 
         // If there were any unpaired benchmarks, show them now.
         if !benches.missing_old().is_empty() {
