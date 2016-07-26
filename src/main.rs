@@ -85,11 +85,11 @@ impl Args {
         let mut output = Table::new();
         output.set_format(*format::consts::FORMAT_CLEAN);
         output.add_row(row![
-            d->"name",
-            format!("{} ns/iter", name_old),
-            format!("{} ns/iter", name_new),
-            r->"diff ns/iter",
-            r->"diff %"
+            b->"name",
+            b->format!("{} ns/iter", name_old),
+            b->format!("{} ns/iter", name_new),
+            br->"diff ns/iter",
+            br->"diff %"
         ]);
         for c in benches.comparisons() {
             let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
