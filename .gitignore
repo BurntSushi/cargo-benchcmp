@@ -14,3 +14,4 @@ test
 months
 *.rs.bk
 *.iml
+.idea/
