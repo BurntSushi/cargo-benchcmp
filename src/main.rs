@@ -93,12 +93,13 @@ impl Args {
         ]);
         for c in benches.comparisons() {
             let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
+            let regression = c.diff_ns < 0;
             if self.flag_threshold.map_or(false, |t| abs_per < t)
-                || self.flag_regressions && c.diff_ns <= 0
-                || self.flag_improvements && c.diff_ns >= 0 {
+                || self.flag_regressions && regression
+                || self.flag_improvements && !regression {
                 continue;
             }
-            output.add_row(c.to_row(self.flag_variance));
+            output.add_row(c.to_row(self.flag_variance, regression));
         }
         output.printstd();
 

@@ -192,7 +192,7 @@ impl Comparison {
     /// compared, the old measurement, the new measurement, the measurement
     /// difference and the percent measurement difference. Negative differences
     /// imply an improvement in performance from old to new.
-    pub fn to_row(&self, variance: bool) -> Row {
+    pub fn to_row(&self, variance: bool, regression: bool) -> Row {
         let name = &self.old.name;
         let fst_ns = self.old.fmt_ns(variance);
         let snd_ns = self.new.fmt_ns(variance);
@@ -205,7 +205,11 @@ impl Comparison {
                 diff_ns
             }
         };
-        row![name, fst_ns, snd_ns, r->diff_ns, r->diff_ratio]
+        if regression {
+            row![Fr->name, Fr->fst_ns, Fr->snd_ns, rFr->diff_ns, rFr->diff_ratio]
+        } else {
+            row![Fg->name, Fg->fst_ns, Fg->snd_ns, rFg->diff_ns, rFg->diff_ratio]
+        }
     }
 }
 
