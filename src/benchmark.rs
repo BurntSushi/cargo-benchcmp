@@ -403,7 +403,6 @@ mod tests {
         use super::super::Benchmark;
         use quickcheck::Arbitrary;
         use quickcheck::Gen;
-        use std::str::FromStr;
 
         impl Arbitrary for Benchmark {
             fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -441,7 +440,7 @@ mod tests {
 
         quickcheck! {
             fn reparse(b1: Benchmark) -> bool {
-                if let Ok(b2) = Benchmark::from_str(as_string(&b1).as_str()) {
+                if let Ok(b2) = as_string(&b1).parse() {
                     deep_eq(&b1, &b2)
                 } else {
                     false
