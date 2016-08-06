@@ -215,6 +215,7 @@ impl Comparison {
 
 /// Returns what's left of the left vector and right vector that doesn't
 /// overlap, and the overlap as a vector of pairs
+#[derive(Debug)]
 struct Overlap<T> {
     left: Vec<T>,
     overlap: Vec<(T, T)>,
@@ -296,4 +297,78 @@ fn commafy(n: u64) -> String {
     }
     with_commas.reverse();
     String::from_utf8(with_commas).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+
+    mod overlap {
+        use super::super::Overlap;
+
+        quickcheck! {
+            fn overlap_correct(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                for (l,r) in overlap.overlap {
+                    if l != r {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            fn result_from_vecs(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                let (ov_left, ov_right): (Vec<usize>, Vec<usize>) = overlap.overlap.into_iter().unzip();
+
+                let mut left_reconstructed: Vec<usize> = overlap.left;
+                left_reconstructed.extend(ov_left);
+                left_reconstructed.sort();
+
+                let mut right_reconstructed: Vec<usize> = overlap.right;
+                right_reconstructed.extend(ov_right);
+                right_reconstructed.sort();
+
+                left == left_reconstructed && right == right_reconstructed
+            }
+
+            fn missing_correct(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                // duplicates in either vec would make this check more complicated
+                left.dedup();
+                right.dedup();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                for l in overlap.left {
+                    if right.iter().find(|&&n| n == l).is_some() {
+                        return false;
+                    }
+                }
+
+                for r in overlap.right {
+                    if left.iter().find(|&&n| n == r).is_some() {
+                        return false;
+                    }
+                }
+
+                true
+            }
+        }
+    }
 }

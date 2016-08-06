@@ -5,6 +5,9 @@ extern crate lazy_static;
 extern crate regex;
 #[macro_use]
 extern crate prettytable;
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
 
 use std::io::{self, BufRead, Read};
 use std::fs::File;
