@@ -115,7 +115,7 @@ lazy_static! {
         test\s+(?P<name>\S+)                        # test   mod::test_name
         \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter  # ... bench: 1234 ns/iter
         \s+\(\+/-\s+(?P<variance>[0-9,]+)\)         # (+/- 4321)
-        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314
+        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314 MB/s
     "##).unwrap();
 }
 
@@ -395,6 +395,57 @@ mod tests {
                 let formatted = format!("{}", n);
                 let stripped: String = commafied.chars().filter(|&b| b != ',').collect();
                 formatted == stripped
+            }
+        }
+    }
+
+    mod benchmark {
+        use super::super::Benchmark;
+        use quickcheck::Arbitrary;
+        use quickcheck::Gen;
+        use std::str::FromStr;
+
+        impl Arbitrary for Benchmark {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let (ns, variance, throughput): (u64, u64, Option<u64>) = Arbitrary::arbitrary(g);
+                let name = {
+                    let size = g.size();
+                    let size = g.gen_range(1, size);
+                    g.gen_ascii_chars().take(size).collect()
+                };
+                Benchmark {
+                    name: name,
+                    ns: ns,
+                    variance: variance,
+                    throughput: throughput,
+                }
+            }
+        }
+
+        fn deep_eq(b1: &Benchmark, b2: &Benchmark) -> bool {
+            b1.name == b2.name && b1.variance == b2.variance && b1.ns == b2.ns &&
+                b1.throughput == b2.throughput
+        }
+
+        fn as_string(b: &Benchmark) -> String {
+            let res = format!("test {} ... bench: {} ns/iter (+/- {})",
+                              b.name,
+                              b.ns,
+                              b.variance);
+            if let Some(throughput) = b.throughput {
+                format!("{} = {} MB/s", res, throughput)
+            } else {
+                res
+            }
+        }
+
+        quickcheck! {
+            fn reparse(b1: Benchmark) -> bool {
+                if let Ok(b2) = Benchmark::from_str(as_string(&b1).as_str()) {
+                    deep_eq(&b1, &b2)
+                } else {
+                    false
+                }
             }
         }
     }
