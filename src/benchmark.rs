@@ -301,7 +301,6 @@ fn commafy(n: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-
     mod overlap {
         use super::super::Overlap;
 
@@ -368,6 +367,34 @@ mod tests {
                 }
 
                 true
+            }
+        }
+    }
+
+    mod commafy {
+        use super::super::commafy;
+
+        quickcheck! {
+            fn comma_every_three(n: u64) -> bool {
+                let commafied = commafy(n);
+                let mut commafied = commafied.split(',');
+                let s = commafied.next().unwrap();
+                if s.len() == 0 || s.len() > 3 {
+                    return false;
+                }
+                for s in commafied {
+                    if s.len() != 3 {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            fn number_matches(n: u64) -> bool {
+                let commafied = commafy(n);
+                let formatted = format!("{}", n);
+                let stripped: String = commafied.chars().filter(|&b| b != ',').collect();
+                formatted == stripped
             }
         }
     }
