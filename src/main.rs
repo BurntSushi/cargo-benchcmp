@@ -332,16 +332,6 @@ mod tests {
             }
         }
 
-        fn is_suffix_of(suffix: &String, string: &String) -> bool {
-            let string = string;
-            let suffix = suffix;
-            string.len() >= suffix.len() ||
-            {
-                let string_part = &string[string.len() - suffix.len()..];
-                string_part == suffix
-            }
-        }
-
         quickcheck! {
             fn empty_gives_old(new_name: AlphaString) -> bool {
                 let AlphaString(new_name) = new_name;
@@ -399,7 +389,7 @@ mod tests {
                 let new = new.to_string_lossy().into_owned();
                 let result = Args::names(&old, &new);
 
-                is_suffix_of(&result.0, &old) && is_suffix_of(&result.1, &new)
+                old.ends_with(&result.0) && new.ends_with(&result.1)
             }
 
             fn shortest_difference(pair: ArbitraryPathBufPair) -> bool {
