@@ -14,7 +14,10 @@ pub struct Benchmarks {
 impl Benchmarks {
     /// Create a new empty set of comparable benchmarks.
     pub fn new() -> Benchmarks {
-        Benchmarks { old: vec![], new: vec![] }
+        Benchmarks {
+            old: vec![],
+            new: vec![],
+        }
     }
 
     /// Add an old benchmark.
@@ -230,7 +233,8 @@ impl<T> Overlap<T> {
     ///  - one for the pairs of elements found equal
     ///  - one of the elements unique to the second vector
     fn find<F>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Overlap<T>
-    where F: FnMut(&T, &T) -> cmp::Ordering {
+        where F: FnMut(&T, &T) -> cmp::Ordering
+    {
         use std::cmp::Ordering::*;
 
         let (mut rleft, mut rright, mut overlap) = (vec![], vec![], vec![]);
@@ -329,7 +333,8 @@ mod tests {
 
                 let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
 
-                let (ov_left, ov_right): (Vec<usize>, Vec<usize>) = overlap.overlap.into_iter().unzip();
+                let (ov_left, ov_right): (Vec<usize>, Vec<usize>) =
+                    overlap.overlap.into_iter().unzip();
 
                 let mut left_reconstructed: Vec<usize> = overlap.left;
                 left_reconstructed.extend(ov_left);
@@ -423,7 +428,7 @@ mod tests {
 
         fn deep_eq(b1: &Benchmark, b2: &Benchmark) -> bool {
             b1.name == b2.name && b1.variance == b2.variance && b1.ns == b2.ns &&
-                b1.throughput == b2.throughput
+            b1.throughput == b2.throughput
         }
 
         fn as_string(b: &Benchmark) -> String {

@@ -41,9 +41,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Regex(ref err) => err.fmt(f),
             Error::Io(ref err) => err.fmt(f),
-            Error::OpenFile { ref path, ref err } => {
-                write!(f, "{}: {}", err, path.display())
-            }
+            Error::OpenFile { ref path, ref err } => write!(f, "{}: {}", err, path.display()),
         }
     }
 }

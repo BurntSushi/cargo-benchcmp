@@ -120,15 +120,19 @@ impl Args {
 
         // If there were any unpaired benchmarks, show them now.
         if !benches.missing_old().is_empty() {
-            let missed = benches
-                .missing_old().iter().map(|b| b.name.to_string())
-                .collect::<Vec<String>>().join(", ");
+            let missed = benches.missing_old()
+                .iter()
+                .map(|b| b.name.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
             eprintln!("WARNING: benchmarks in old but not in new: {}", missed);
         }
         if !benches.missing_new().is_empty() {
-            let missed = benches
-                .missing_new().iter().map(|b| b.name.to_string())
-                .collect::<Vec<String>>().join(", ");
+            let missed = benches.missing_new()
+                .iter()
+                .map(|b| b.name.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
             eprintln!("WARNING: benchmarks in new but not in old: {}", missed);
         }
         Ok(())
@@ -175,11 +179,9 @@ impl Args {
     /// Parses benchmarks from one file with two prefixes. The first prefix
     /// identifies benchmarks in the old set and the second prefix identifies
     /// benchmarks in the new set where all benchmarks are found in one file.
-    fn parse_file_benchmarks<P>(
-        &self,
-        file: P,
-    ) -> Result<Benchmarks>
-    where P: AsRef<Path> {
+    fn parse_file_benchmarks<P>(&self, file: P) -> Result<Benchmarks>
+        where P: AsRef<Path>
+    {
         // Slurp up the entire file so that we can reuse this code with the
         // code for reading benchmarks on stdin.
         let mut buf = String::new();
@@ -209,18 +211,16 @@ impl Args {
     /// Returns the names that should be used in the column header.
     fn names(arg_old: &String, arg_new: &String) -> (String, String) {
         // If either of the names are empty, substitute them with defaults.
-        let arg_old =
-            if arg_old.is_empty() {
-                "old".to_string()
-            } else {
-                arg_old.to_string()
-            };
-        let arg_new =
-            if arg_new.is_empty() {
-                "new".to_string()
-            } else {
-                arg_new.to_string()
-            };
+        let arg_old = if arg_old.is_empty() {
+            "old".to_string()
+        } else {
+            arg_old.to_string()
+        };
+        let arg_new = if arg_new.is_empty() {
+            "new".to_string()
+        } else {
+            arg_new.to_string()
+        };
         // The names could be either in the prefixes or in the file paths.
         let (old, new) = (Path::new(&arg_old), Path::new(&arg_new));
         // No files paths? Don't do anything smart.
@@ -251,14 +251,11 @@ impl Args {
 }
 
 fn version() -> String {
-    let (maj, min, pat) = (
-        option_env!("CARGO_PKG_VERSION_MAJOR"),
-        option_env!("CARGO_PKG_VERSION_MINOR"),
-        option_env!("CARGO_PKG_VERSION_PATCH"),
-    );
+    let (maj, min, pat) = (option_env!("CARGO_PKG_VERSION_MAJOR"),
+                           option_env!("CARGO_PKG_VERSION_MINOR"),
+                           option_env!("CARGO_PKG_VERSION_PATCH"));
     match (maj, min, pat) {
-        (Some(maj), Some(min), Some(pat)) =>
-            format!("{}.{}.{}", maj, min, pat),
+        (Some(maj), Some(min), Some(pat)) => format!("{}.{}.{}", maj, min, pat),
         _ => "".to_owned(),
     }
 }
@@ -302,7 +299,7 @@ mod tests {
                 let components = g.size();
                 let components = g.gen_range(1, components);
                 let mut path_buf = PathBuf::new();
-                for _ in 0 .. components {
+                for _ in 0..components {
                     let AlphaString(component) = AlphaString::arbitrary(g);
                     path_buf.push(component);
                 }
@@ -319,10 +316,10 @@ mod tests {
                 let components = g.gen_range(1, components);
                 let mut path_buf1 = PathBuf::new();
                 let mut path_buf2 = PathBuf::new();
-                for component_no in 0 .. components {
+                for component_no in 0..components {
                     let AlphaString(component) = AlphaString::arbitrary(g);
                     // further along in the path, the components are less likely to be different
-                    if g.gen_weighted_bool(2 + (component_no / 2) as u32 ) {
+                    if g.gen_weighted_bool(2 + (component_no / 2) as u32) {
                         path_buf1.push(component);
                         let AlphaString(component) = AlphaString::arbitrary(g);
                         path_buf2.push(component);
@@ -338,7 +335,8 @@ mod tests {
         fn is_suffix_of(suffix: &String, string: &String) -> bool {
             let string = string;
             let suffix = suffix;
-            string.len() >= suffix.len() || {
+            string.len() >= suffix.len() ||
+            {
                 let string_part = &string[string.len() - suffix.len()..];
                 string_part == suffix
             }
@@ -418,10 +416,8 @@ mod tests {
                 let shortest_difference = zipped.next().map(|(o, n)| o != n).unwrap_or(false);
                 let shortest_difference = shortest_difference && zipped.all(|(o, n)| o == n);
 
-                old == new
-                    || path_0.iter().count() <= 1
-                    || path_1.iter().count() <= 1
-                    || shortest_difference
+                old == new || path_0.iter().count() <= 1 || path_1.iter().count() <= 1 ||
+                shortest_difference
             }
         }
     }
