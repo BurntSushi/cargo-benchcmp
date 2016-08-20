@@ -9,7 +9,7 @@ extern crate prettytable;
 #[macro_use]
 extern crate quickcheck;
 
-use std::io::{self, BufRead, Read};
+use std::io::{self, BufRead};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -142,10 +142,10 @@ impl Args {
     fn parse_benchmarks(&self) -> Result<Benchmarks> {
         if let Some(ref one_file) = self.arg_file {
             if one_file == "-" {
-                let mut buf = String::new();
                 let stdin = io::stdin();
-                try!(stdin.lock().read_to_string(&mut buf));
-                self.parse_buf_benchmarks(&buf)
+                let stdin_lock = stdin.lock();
+                let benches = try!(Args::parse_buffer(stdin_lock));
+                Ok(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new))
             } else {
                 self.parse_file_benchmarks(one_file)
             }
@@ -157,59 +157,52 @@ impl Args {
     /// Parses benchmarks from two files: one containing old benchmark output
     /// and another containing new benchmark output.
     fn parse_old_new_benchmarks(&self) -> Result<Benchmarks> {
-        let bold = io::BufReader::new(try!(open_file(&self.arg_old)));
-        let bnew = io::BufReader::new(try!(open_file(&self.arg_new)));
+        let b_old = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_old)))));
+        let b_new = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_new)))));
 
-        let mut benches = Benchmarks::new();
-        for line in bold.lines() {
-            let line = try!(line);
-            if let Ok(bench) = line.parse() {
-                benches.add_old(bench);
-            }
-        }
-        for line in bnew.lines() {
-            let line = try!(line);
-            if let Ok(bench) = line.parse() {
-                benches.add_new(bench);
-            }
-        }
-        Ok(benches)
+        Ok(Benchmarks::from(b_old, b_new))
     }
 
-    /// Parses benchmarks from one file with two prefixes. The first prefix
-    /// identifies benchmarks in the old set and the second prefix identifies
-    /// benchmarks in the new set where all benchmarks are found in one file.
+    /// Parses benchmarks from one file, then splits on the two prefixes.
+    /// See also: Args::split_benchmarks
     fn parse_file_benchmarks<P>(&self, file: P) -> Result<Benchmarks>
         where P: AsRef<Path>
     {
-        // Slurp up the entire file so that we can reuse this code with the
-        // code for reading benchmarks on stdin.
-        let mut buf = String::new();
-        try!(try!(File::open(file)).read_to_string(&mut buf));
-        self.parse_buf_benchmarks(&buf)
+        let benches = try!(Args::parse_buffer(io::BufReader::new(try!(File::open(file)))));
+        Ok(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new))
     }
 
-    /// Same as parse_file_benchmarks, but straight from the buffer.
-    fn parse_buf_benchmarks(&self, buf: &str) -> Result<Benchmarks> {
+    /// Parse benchmarks from a buffered reader.
+    fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
+        let iter = buffer.lines();
+        let mut vec = Vec::with_capacity(iter.size_hint().0);
+        for result in iter {
+            if let Some(bench) = try!(result).parse().ok() {
+                vec.push(bench)
+            }
+        }
+        Ok(vec)
+    }
+
+    /// Splits benchmarks from one source with two prefixes. The first prefix
+    /// identifies benchmarks in the old set and the second prefix identifies
+    /// benchmarks in the new set where all benchmarks are found in one file.
+    fn split_benchmarks(vec: Vec<Benchmark>, arg_old: &str, arg_new: &str) -> Benchmarks {
         let mut benches = Benchmarks::new();
-        for line in buf.lines() {
-            let mut bench: Benchmark = match line.parse() {
-                Err(_) => continue,
-                Ok(bench) => bench,
-            };
-            if bench.name.starts_with(&self.arg_old) {
-                bench.name = bench.name[self.arg_old.len()..].to_string();
+        for mut bench in vec {
+            if bench.name.starts_with(arg_old) {
+                bench.name = bench.name[arg_old.len()..].to_string();
                 benches.add_old(bench);
-            } else if bench.name.starts_with(&self.arg_new) {
-                bench.name = bench.name[self.arg_new.len()..].to_string();
+            } else if bench.name.starts_with(arg_new) {
+                bench.name = bench.name[arg_new.len()..].to_string();
                 benches.add_new(bench);
             }
         }
-        Ok(benches)
+        benches
     }
 
     /// Returns the names that should be used in the column header.
-    fn names(arg_old: &String, arg_new: &String) -> (String, String) {
+    fn names(arg_old: &str, arg_new: &str) -> (String, String) {
         // If either of the names are empty, substitute them with defaults.
         let arg_old = if arg_old.is_empty() {
             "old".to_string()

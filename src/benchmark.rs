@@ -20,6 +20,13 @@ impl Benchmarks {
         }
     }
 
+    pub fn from(old: Vec<Benchmark>, new: Vec<Benchmark>) -> Benchmarks {
+        Benchmarks {
+            old: old,
+            new: new,
+        }
+    }
+
     /// Add an old benchmark.
     pub fn add_old(&mut self, b: Benchmark) {
         self.old.push(b);
