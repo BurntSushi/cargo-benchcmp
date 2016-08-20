@@ -90,7 +90,7 @@ fn main() {
 
 impl Args {
     fn run(&self) -> Result<()> {
-        let (name_old, name_new) = self.names();
+        let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
         let mut output = Table::new();
         output.set_format(*format::consts::FORMAT_CLEAN);
@@ -207,19 +207,19 @@ impl Args {
     }
 
     /// Returns the names that should be used in the column header.
-    fn names(&self) -> (String, String) {
+    fn names(arg_old: &String, arg_new: &String) -> (String, String) {
         // If either of the names are empty, substitute them with defaults.
         let arg_old =
-            if self.arg_old.is_empty() {
+            if arg_old.is_empty() {
                 "old".to_string()
             } else {
-                self.arg_old.to_string()
+                arg_old.to_string()
             };
         let arg_new =
-            if self.arg_new.is_empty() {
+            if arg_new.is_empty() {
                 "new".to_string()
             } else {
-                self.arg_new.to_string()
+                arg_new.to_string()
             };
         // The names could be either in the prefixes or in the file paths.
         let (old, new) = (Path::new(&arg_old), Path::new(&arg_new));
@@ -272,4 +272,157 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
             err: err,
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    mod names {
+        use super::super::Args;
+        use std::path::{Path, PathBuf};
+        use quickcheck::Arbitrary;
+        use quickcheck::Gen;
+        use std::ffi::OsStr;
+
+        #[derive(Clone, Debug)]
+        struct AlphaString(String);
+
+        impl Arbitrary for AlphaString {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let size = g.size();
+                let size = g.gen_range(1, size);
+                AlphaString(g.gen_ascii_chars().take(size).collect())
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        struct ArbitraryPathBuf(PathBuf);
+
+        impl Arbitrary for ArbitraryPathBuf {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let components = g.size();
+                let components = g.gen_range(1, components);
+                let mut path_buf = PathBuf::new();
+                for _ in 0 .. components {
+                    let AlphaString(component) = AlphaString::arbitrary(g);
+                    path_buf.push(component);
+                }
+                ArbitraryPathBuf(path_buf)
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        struct ArbitraryPathBufPair(PathBuf, PathBuf);
+
+        impl Arbitrary for ArbitraryPathBufPair {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let components = g.size();
+                let components = g.gen_range(1, components);
+                let mut path_buf1 = PathBuf::new();
+                let mut path_buf2 = PathBuf::new();
+                for component_no in 0 .. components {
+                    let AlphaString(component) = AlphaString::arbitrary(g);
+                    // further along in the path, the components are less likely to be different
+                    if g.gen_weighted_bool(2 + (component_no / 2) as u32 ) {
+                        path_buf1.push(component);
+                        let AlphaString(component) = AlphaString::arbitrary(g);
+                        path_buf2.push(component);
+                    } else {
+                        path_buf1.push(component.clone());
+                        path_buf2.push(component);
+                    }
+                }
+                ArbitraryPathBufPair(path_buf1, path_buf2)
+            }
+        }
+
+        fn is_suffix_of(suffix: &String, string: &String) -> bool {
+            let string = string;
+            let suffix = suffix;
+            string.len() >= suffix.len() || {
+                let string_part = &string[string.len() - suffix.len()..];
+                string_part == suffix
+            }
+        }
+
+        quickcheck! {
+            fn empty_gives_old(new_name: AlphaString) -> bool {
+                let AlphaString(new_name) = new_name;
+                let empty = String::from("");
+                let result = Args::names(&empty, &new_name);
+
+                ("old".to_string(), new_name) == result
+            }
+
+            fn empty_gives_new(old_name: AlphaString) -> bool {
+                let AlphaString(old_name) = old_name;
+                let empty = String::from("");
+                let result = Args::names(&old_name, &empty);
+
+                (old_name, "new".to_string()) == result
+            }
+
+            fn non_path_gives_originals(old_name: AlphaString, new_name: AlphaString) -> bool {
+                let AlphaString(old_name) = old_name;
+                let AlphaString(new_name) = new_name;
+                let result = Args::names(&old_name, &new_name);
+
+                (old_name, new_name) == result
+            }
+
+            fn same_path_gives_originals(path: ArbitraryPathBuf) -> bool {
+                let ArbitraryPathBuf(path) = path;
+                let path = path.to_string_lossy().into_owned();
+                let result = Args::names(&path, &path);
+
+                (path.clone(), path) == result
+            }
+
+            fn symmetric_operation(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                (result.1, result.0) == Args::names(&new, &old)
+            }
+
+            fn difference_preserving(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                (old == new) == (result.0 == result.1)
+            }
+
+            fn gives_suffixes(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                is_suffix_of(&result.0, &old) && is_suffix_of(&result.1, &new)
+            }
+
+            fn shortest_difference(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                let path_0 = Path::new(&result.0);
+                let path_1 = Path::new(&result.1);
+                let path_0: Vec<&OsStr> = path_0.iter().collect();
+                let path_1: Vec<&OsStr> = path_1.iter().collect();
+                let mut zipped = path_0.iter().rev().zip(path_1.iter().rev()).rev();
+                let shortest_difference = zipped.next().map(|(o, n)| o != n).unwrap_or(false);
+                let shortest_difference = shortest_difference && zipped.all(|(o, n)| o == n);
+
+                old == new
+                    || path_0.iter().count() <= 1
+                    || path_1.iter().count() <= 1
+                    || shortest_difference
+            }
+        }
+    }
 }
