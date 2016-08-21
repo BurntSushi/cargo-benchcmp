@@ -177,7 +177,7 @@ impl Args {
         let iter = buffer.lines();
         let mut vec = Vec::with_capacity(iter.size_hint().0);
         for result in iter {
-            if let Some(bench) = try!(result).parse().ok() {
+            if let Ok(bench) = try!(result).parse() {
                 vec.push(bench)
             }
         }
