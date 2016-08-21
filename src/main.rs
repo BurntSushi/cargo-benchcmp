@@ -145,7 +145,7 @@ impl Args {
                 let stdin = io::stdin();
                 let stdin_lock = stdin.lock();
                 let benches = try!(Args::parse_buffer(stdin_lock));
-                Ok(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new))
+                Ok(Benchmarks::from(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new)))
             } else {
                 self.parse_file_benchmarks(one_file)
             }
@@ -160,7 +160,7 @@ impl Args {
         let b_old = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_old)))));
         let b_new = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_new)))));
 
-        Ok(Benchmarks::from(b_old, b_new))
+        Ok(Benchmarks::from((b_old, b_new)))
     }
 
     /// Parses benchmarks from one file, then splits on the two prefixes.
@@ -169,7 +169,7 @@ impl Args {
         where P: AsRef<Path>
     {
         let benches = try!(Args::parse_buffer(io::BufReader::new(try!(File::open(file)))));
-        Ok(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new))
+        Ok(Benchmarks::from(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new)))
     }
 
     /// Parse benchmarks from a buffered reader.
@@ -187,18 +187,22 @@ impl Args {
     /// Splits benchmarks from one source with two prefixes. The first prefix
     /// identifies benchmarks in the old set and the second prefix identifies
     /// benchmarks in the new set where all benchmarks are found in one file.
-    fn split_benchmarks(vec: Vec<Benchmark>, arg_old: &str, arg_new: &str) -> Benchmarks {
-        let mut benches = Benchmarks::new();
+    fn split_benchmarks(vec: Vec<Benchmark>,
+                        arg_old: &str,
+                        arg_new: &str)
+                        -> (Vec<Benchmark>, Vec<Benchmark>) {
+        let mut b_old = Vec::new();
+        let mut b_new = Vec::new();
         for mut bench in vec {
             if bench.name.starts_with(arg_old) {
                 bench.name = bench.name[arg_old.len()..].to_string();
-                benches.add_old(bench);
+                b_old.push(bench);
             } else if bench.name.starts_with(arg_new) {
                 bench.name = bench.name[arg_new.len()..].to_string();
-                benches.add_new(bench);
+                b_new.push(bench);
             }
         }
-        benches
+        (b_old, b_new)
     }
 
     /// Returns the names that should be used in the column header.
@@ -266,23 +270,27 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
 
 #[cfg(test)]
 mod tests {
+    use quickcheck::Arbitrary;
+    use quickcheck::Gen;
+
+    #[derive(Clone, Debug)]
+    struct AlphaString(String);
+
+    impl Arbitrary for AlphaString {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let size = g.size();
+            let size = g.gen_range(1, size);
+            AlphaString(g.gen_ascii_chars().take(size).collect())
+        }
+    }
+
     mod names {
         use super::super::Args;
+        use super::AlphaString;
         use std::path::{Path, PathBuf};
+        use std::ffi::OsStr;
         use quickcheck::Arbitrary;
         use quickcheck::Gen;
-        use std::ffi::OsStr;
-
-        #[derive(Clone, Debug)]
-        struct AlphaString(String);
-
-        impl Arbitrary for AlphaString {
-            fn arbitrary<G: Gen>(g: &mut G) -> Self {
-                let size = g.size();
-                let size = g.gen_range(1, size);
-                AlphaString(g.gen_ascii_chars().take(size).collect())
-            }
-        }
 
         #[derive(Clone, Debug)]
         struct ArbitraryPathBuf(PathBuf);
@@ -401,6 +409,103 @@ mod tests {
 
                 old == new || path_0.iter().count() <= 1 || path_1.iter().count() <= 1 ||
                 shortest_difference
+            }
+        }
+    }
+
+    mod split_benchmarks {
+        use super::super::Args;
+        use super::AlphaString;
+        use benchmark::Benchmark;
+
+        quickcheck! {
+            fn prefixes_removed(benches: Vec<Benchmark>,
+                                old: AlphaString,
+                                new: AlphaString)
+                                -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches, &old, &new);
+
+                result.0.into_iter().all(|b| !b.name.starts_with(&old)) &&
+                result.1.into_iter().all(|b| !b.name.starts_with(&new))
+            }
+
+            fn from_original(benches: Vec<Benchmark>, old: AlphaString, new: AlphaString) -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+
+                result.0.into_iter().all(|mut b| {
+                    b.name = old.clone() + &b.name;
+                    benches.contains(&b)
+                }) &&
+                result.1.into_iter().all(|mut b| {
+                    b.name = new.clone() + &b.name;
+                    benches.contains(&b)
+                })
+            }
+
+            fn non_overlapping(benches: Vec<Benchmark>,
+                               old: AlphaString,
+                               new: AlphaString)
+                               -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+                let mut benches = benches;
+
+                let results: Vec<Benchmark> = result.0
+                    .into_iter()
+                    .map(|mut b| {
+                        b.name = old.clone() + &b.name;
+                        b
+                    })
+                    .chain(result.1.into_iter().map(|mut b| {
+                        b.name = new.clone() + &b.name;
+                        b
+                    }))
+                    .collect();
+
+                for result in results {
+                    if let Some(index) = benches.iter().position(|b| b == &result) {
+                        benches.swap_remove(index);
+                    } else {
+                        return false;
+                    }
+                }
+
+                true
+            }
+
+            fn dropped_non_prefix(benches: Vec<Benchmark>,
+                                  old: AlphaString,
+                                  new: AlphaString)
+                                  -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+                let mut benches = benches;
+
+                let results: Vec<Benchmark> = result.0
+                    .into_iter()
+                    .map(|mut b| {
+                        b.name = old.clone() + &b.name;
+                        b
+                    })
+                    .chain(result.1.into_iter().map(|mut b| {
+                        b.name = new.clone() + &b.name;
+                        b
+                    }))
+                    .collect();
+
+                for result in results {
+                    if let Some(index) = benches.iter().position(|b| b == &result) {
+                        benches.swap_remove(index);
+                    }
+                }
+
+                benches.into_iter().all(|b| !(b.name.starts_with(&old) || b.name.starts_with(&new)))
             }
         }
     }

@@ -20,10 +20,10 @@ impl Benchmarks {
         }
     }
 
-    pub fn from(old: Vec<Benchmark>, new: Vec<Benchmark>) -> Benchmarks {
+    pub fn from(pair: (Vec<Benchmark>, Vec<Benchmark>)) -> Benchmarks {
         Benchmarks {
-            old: old,
-            new: new,
+            old: pair.0,
+            new: pair.1,
         }
     }
 
