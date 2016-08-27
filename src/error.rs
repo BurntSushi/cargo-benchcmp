@@ -12,10 +12,7 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     Regex(regex::Error),
     Io(io::Error),
-    OpenFile {
-        path: PathBuf,
-        err: io::Error,
-    },
+    OpenFile { path: PathBuf, err: io::Error },
 }
 
 impl error::Error for Error {
