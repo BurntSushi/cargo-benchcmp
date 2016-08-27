@@ -1,5 +1,7 @@
 #[macro_use] extern crate second_law;
 
+static BENCH_OUTPUT_1: &'static str = include_str!("fixtures/bench_output_1.txt");
+
 fn new_ucmd() -> second_law::UCommand {
     let mut scene: second_law::Scene = new_scene!();
     scene.subcmd_arg("benchcmp");
@@ -39,4 +41,9 @@ fn different_input() {
 #[test]
 fn different_input_selections() {
     new_ucmd().args(&["dense::", "dense_boxed::", "bench_output_1.txt"]).succeeds().stdout_is_fixture("different_input_selections.expected");
+}
+
+#[test]
+fn stdin() {
+    new_ucmd().args(&["dense::", "dense_boxed::", "-"]).pipe_in(BENCH_OUTPUT_1).succeeds().stdout_is_fixture("different_input_selections.expected");
 }
