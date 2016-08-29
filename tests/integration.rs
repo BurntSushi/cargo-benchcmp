@@ -1,4 +1,15 @@
-#[macro_use] extern crate second_law;
+extern crate second_law;
+
+macro_rules! new_scene {
+    () => ({
+        use second_law;
+        if cfg!(target_os = "windows") {
+            second_law::Scene::new(format!("{}.exe", env!("CARGO_PKG_NAME")))
+        } else {
+            second_law::Scene::new(env!("CARGO_PKG_NAME"))
+        }
+    });
+}
 
 static BENCH_OUTPUT_1: &'static str = include_str!("fixtures/bench_output_1.txt");
 
