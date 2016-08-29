@@ -1,0 +1,15 @@
+ name                                bench_output_2.txt ns/iter  bench_output_3.txt ns/iter  diff ns/iter  diff % 
+ ac_one_byte                         349 (28653 MB/s)            354 (28248 MB/s)                       5   1.43% 
+ ac_one_prefix_byte_every_match      112,957 (88 MB/s)           150,581 (66 MB/s)                 37,624  33.31% 
+ ac_one_prefix_byte_no_match         350 (28571 MB/s)            354 (28248 MB/s)                       4   1.14% 
+ ac_one_prefix_byte_random           16,096 (621 MB/s)           20,273 (493 MB/s)                  4,177  25.95% 
+ ac_ten_bytes                        58,588 (170 MB/s)           108,092 (92 MB/s)                 49,504  84.50% 
+ ac_ten_diff_prefix                  58,601 (170 MB/s)           108,082 (92 MB/s)                 49,481  84.44% 
+ ac_ten_one_prefix_byte_every_match  112,920 (88 MB/s)           150,561 (66 MB/s)                 37,641  33.33% 
+ ac_ten_one_prefix_byte_no_match     350 (28571 MB/s)            354 (28248 MB/s)                       4   1.14% 
+ ac_ten_one_prefix_byte_random       19,181 (521 MB/s)           23,684 (422 MB/s)                  4,503  23.48% 
+ ac_two_bytes                        3,125 (3200 MB/s)           3,138 (3186 MB/s)                     13   0.42% 
+ ac_two_diff_prefix                  3,124 (3201 MB/s)           3,138 (3186 MB/s)                     14   0.45% 
+ ac_two_one_prefix_byte_every_match  112,934 (88 MB/s)           150,571 (66 MB/s)                 37,637  33.33% 
+ ac_two_one_prefix_byte_no_match     350 (28571 MB/s)            354 (28248 MB/s)                       4   1.14% 
+ ac_two_one_prefix_byte_random       16,511 (605 MB/s)           21,009 (476 MB/s)                  4,498  27.24% 
