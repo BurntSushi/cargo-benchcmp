@@ -18,9 +18,6 @@ static DIFFERENT_INPUT: &'static str = include_str!("fixtures/different_input.ex
 #[cfg(not(windows))]
 static DIFFERENT_INPUT_SELECTIONS: &'static str = include_str!("fixtures/different_input_selections\
                                                                 .expected");
-#[cfg(not(windows))]
-static NON_OVERLAPPING_INPUT: &'static str = include_str!("fixtures/non_overlapping_input.\
-                                                           expected");
 
 #[cfg(windows)]
 static SAME_INPUT: &'static str = include_str!("fixtures/same_input.windows.expected");
@@ -29,8 +26,8 @@ static DIFFERENT_INPUT: &'static str = include_str!("fixtures/different_input.wi
 #[cfg(windows)]
 static DIFFERENT_INPUT_SELECTIONS: &'static str = include_str!("fixtures/different_input_selections\
                                                                 .windows.expected");
-#[cfg(windows)]
-static NON_OVERLAPPING_INPUT: &'static str = include_str!("fixtures/non_overlapping_input.windows.\
+
+static NON_OVERLAPPING_INPUT: &'static str = include_str!("fixtures/non_overlapping_input.\
                                                            expected");
 
 fn new_ucmd() -> second_law::UCommand {
