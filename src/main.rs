@@ -419,18 +419,6 @@ mod tests {
         use benchmark::Benchmark;
 
         quickcheck! {
-            fn prefixes_removed(benches: Vec<Benchmark>,
-                                old: AlphaString,
-                                new: AlphaString)
-                                -> bool {
-                let AlphaString(old) = old;
-                let AlphaString(new) = new;
-                let result = Args::split_benchmarks(benches, &old, &new);
-
-                result.0.into_iter().all(|b| !b.name.starts_with(&old)) &&
-                result.1.into_iter().all(|b| !b.name.starts_with(&new))
-            }
-
             fn from_original(benches: Vec<Benchmark>, old: AlphaString, new: AlphaString) -> bool {
                 let AlphaString(old) = old;
                 let AlphaString(new) = new;
