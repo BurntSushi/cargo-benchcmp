@@ -92,30 +92,32 @@ impl Args {
     fn run(&self) -> Result<()> {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
-        let mut output = Table::new();
-        output.set_format(*format::consts::FORMAT_CLEAN);
-        output.add_row(row![
-            b->"name",
-            b->format!("{} ns/iter", name_old),
-            b->format!("{} ns/iter", name_new),
-            br->"diff ns/iter",
-            br->"diff %"
-        ]);
-        for c in benches.comparisons() {
-            let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
-            let regression = c.diff_ns < 0;
-            if self.flag_threshold.map_or(false, |t| abs_per < t)
-                || self.flag_regressions && regression
-                || self.flag_improvements && !regression {
-                continue;
+        if benches.comparisons().len() > 0 {
+            let mut output = Table::new();
+            output.set_format(*format::consts::FORMAT_CLEAN);
+            output.add_row(row![
+                b->"name",
+                b->format!("{} ns/iter", name_old),
+                b->format!("{} ns/iter", name_new),
+                br->"diff ns/iter",
+                br->"diff %"
+            ]);
+            for c in benches.comparisons() {
+                let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
+                let regression = c.diff_ns < 0;
+                if self.flag_threshold.map_or(false, |t| abs_per < t)
+                    || self.flag_regressions && regression
+                    || self.flag_improvements && !regression {
+                    continue;
+                }
+                output.add_row(c.to_row(self.flag_variance, regression));
             }
-            output.add_row(c.to_row(self.flag_variance, regression));
-        }
-
-        match self.flag_color {
-            When::Auto => output.printstd(),
-            When::Never => try!(output.print(&mut io::stdout())),
-            When::Always => output.print_tty(true),
+            
+            match self.flag_color {
+                When::Auto => output.printstd(),
+                When::Never => try!(output.print(&mut io::stdout())),
+                When::Always => output.print_tty(true),
+            }
         }
 
         // If there were any unpaired benchmarks, show them now.
