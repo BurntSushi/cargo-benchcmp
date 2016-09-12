@@ -11,21 +11,10 @@ macro_rules! new_scene {
     });
 }
 
-#[cfg(not(windows))]
 static SAME_INPUT: &'static str = include_str!("fixtures/same_input.expected");
-#[cfg(not(windows))]
 static DIFFERENT_INPUT: &'static str = include_str!("fixtures/different_input.expected");
-#[cfg(not(windows))]
 static DIFFERENT_INPUT_SELECTIONS: &'static str = include_str!("fixtures/different_input_selections\
                                                                 .expected");
-
-#[cfg(windows)]
-static SAME_INPUT: &'static str = include_str!("fixtures/same_input.windows.expected");
-#[cfg(windows)]
-static DIFFERENT_INPUT: &'static str = include_str!("fixtures/different_input.windows.expected");
-#[cfg(windows)]
-static DIFFERENT_INPUT_SELECTIONS: &'static str = include_str!("fixtures/different_input_selections\
-                                                                .windows.expected");
 
 static NON_OVERLAPPING_INPUT: &'static str = include_str!("fixtures/non_overlapping_input.\
                                                            expected");
