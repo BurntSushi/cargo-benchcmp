@@ -13,28 +13,11 @@ pub struct Benchmarks {
 
 impl Benchmarks {
     /// Create a new empty set of comparable benchmarks.
-    pub fn new() -> Benchmarks {
-        Benchmarks {
-            old: vec![],
-            new: vec![],
-        }
-    }
-
     pub fn from(pair: (Vec<Benchmark>, Vec<Benchmark>)) -> Benchmarks {
         Benchmarks {
             old: pair.0,
             new: pair.1,
         }
-    }
-
-    /// Add an old benchmark.
-    pub fn add_old(&mut self, b: Benchmark) {
-        self.old.push(b);
-    }
-
-    /// Add a new benchmark.
-    pub fn add_new(&mut self, b: Benchmark) {
-        self.new.push(b);
     }
 
     /// Create a set of pairwise comparisons between benchmarks.
