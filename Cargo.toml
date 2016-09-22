@@ -15,11 +15,13 @@ license = "Unlicense/MIT"
 [dependencies]
 docopt = "0.6.81"
 lazy_static = "0.2.1"
-quickcheck = "0.3.1"
 regex = "0.1.73"
 rustc-serialize = "0.3.19"
-second_law = "0.2.1"
 
 [dependencies.prettytable-rs]
 version = "0.6.3"
 default-features = false # Don't use crlf on windows
+
+[dev-dependencies]
+quickcheck = "0.3.1"
+second_law = "0.2.1"
