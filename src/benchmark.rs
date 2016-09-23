@@ -13,18 +13,11 @@ pub struct Benchmarks {
 
 impl Benchmarks {
     /// Create a new empty set of comparable benchmarks.
-    pub fn new() -> Benchmarks {
-        Benchmarks { old: vec![], new: vec![] }
-    }
-
-    /// Add an old benchmark.
-    pub fn add_old(&mut self, b: Benchmark) {
-        self.old.push(b);
-    }
-
-    /// Add a new benchmark.
-    pub fn add_new(&mut self, b: Benchmark) {
-        self.new.push(b);
+    pub fn from(pair: (Vec<Benchmark>, Vec<Benchmark>)) -> Benchmarks {
+        Benchmarks {
+            old: pair.0,
+            new: pair.1,
+        }
     }
 
     /// Create a set of pairwise comparisons between benchmarks.
@@ -115,7 +108,7 @@ lazy_static! {
         test\s+(?P<name>\S+)                        # test   mod::test_name
         \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter  # ... bench: 1234 ns/iter
         \s+\(\+/-\s+(?P<variance>[0-9,]+)\)         # (+/- 4321)
-        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314
+        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314 MB/s
     "##).unwrap();
 }
 
@@ -215,6 +208,7 @@ impl Comparison {
 
 /// Returns what's left of the left vector and right vector that doesn't
 /// overlap, and the overlap as a vector of pairs
+#[derive(Debug)]
 struct Overlap<T> {
     left: Vec<T>,
     overlap: Vec<(T, T)>,
@@ -229,7 +223,8 @@ impl<T> Overlap<T> {
     ///  - one for the pairs of elements found equal
     ///  - one of the elements unique to the second vector
     fn find<F>(mut left: Vec<T>, mut right: Vec<T>, mut fun: F) -> Overlap<T>
-    where F: FnMut(&T, &T) -> cmp::Ordering {
+        where F: FnMut(&T, &T) -> cmp::Ordering
+    {
         use std::cmp::Ordering::*;
 
         let (mut rleft, mut rright, mut overlap) = (vec![], vec![], vec![]);
@@ -296,4 +291,156 @@ fn commafy(n: u64) -> String {
     }
     with_commas.reverse();
     String::from_utf8(with_commas).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    mod overlap {
+        use super::super::Overlap;
+
+        quickcheck! {
+            fn overlap_correct(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                for (l,r) in overlap.overlap {
+                    if l != r {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            fn result_from_vecs(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                let (ov_left, ov_right): (Vec<usize>, Vec<usize>) =
+                    overlap.overlap.into_iter().unzip();
+
+                let mut left_reconstructed: Vec<usize> = overlap.left;
+                left_reconstructed.extend(ov_left);
+                left_reconstructed.sort();
+
+                let mut right_reconstructed: Vec<usize> = overlap.right;
+                right_reconstructed.extend(ov_right);
+                right_reconstructed.sort();
+
+                left == left_reconstructed && right == right_reconstructed
+            }
+
+            fn missing_correct(left: Vec<usize>, right: Vec<usize>) -> bool {
+                let mut left = left;
+                let mut right = right;
+                left.sort();
+                right.sort();
+
+                // duplicates in either vec would make this check more complicated
+                left.dedup();
+                right.dedup();
+
+                let overlap = Overlap::find(left.clone(), right.clone(), usize::cmp);
+
+                for l in overlap.left {
+                    if right.iter().find(|&&n| n == l).is_some() {
+                        return false;
+                    }
+                }
+
+                for r in overlap.right {
+                    if left.iter().find(|&&n| n == r).is_some() {
+                        return false;
+                    }
+                }
+
+                true
+            }
+        }
+    }
+
+    mod commafy {
+        use super::super::commafy;
+
+        quickcheck! {
+            fn comma_every_three(n: u64) -> bool {
+                let commafied = commafy(n);
+                let mut commafied = commafied.split(',');
+                let s = commafied.next().unwrap();
+                if s.len() == 0 || s.len() > 3 {
+                    return false;
+                }
+                for s in commafied {
+                    if s.len() != 3 {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            fn number_matches(n: u64) -> bool {
+                let commafied = commafy(n);
+                let formatted = format!("{}", n);
+                let stripped: String = commafied.chars().filter(|&b| b != ',').collect();
+                formatted == stripped
+            }
+        }
+    }
+
+    mod benchmark {
+        use super::super::Benchmark;
+        use quickcheck::Arbitrary;
+        use quickcheck::Gen;
+
+        impl Arbitrary for Benchmark {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let (ns, variance, throughput): (u64, u64, Option<u64>) = Arbitrary::arbitrary(g);
+                let name = {
+                    let size = g.size();
+                    let size = g.gen_range(1, size);
+                    g.gen_ascii_chars().take(size).collect()
+                };
+                Benchmark {
+                    name: name,
+                    ns: ns,
+                    variance: variance,
+                    throughput: throughput,
+                }
+            }
+        }
+
+        fn deep_eq(b1: &Benchmark, b2: &Benchmark) -> bool {
+            b1.name == b2.name && b1.variance == b2.variance && b1.ns == b2.ns &&
+            b1.throughput == b2.throughput
+        }
+
+        fn as_string(b: &Benchmark) -> String {
+            let res = format!("test {} ... bench: {} ns/iter (+/- {})",
+                              b.name,
+                              b.ns,
+                              b.variance);
+            if let Some(throughput) = b.throughput {
+                format!("{} = {} MB/s", res, throughput)
+            } else {
+                res
+            }
+        }
+
+        quickcheck! {
+            fn reparse(b1: Benchmark) -> bool {
+                if let Ok(b2) = as_string(&b1).parse() {
+                    deep_eq(&b1, &b2)
+                } else {
+                    false
+                }
+            }
+        }
+    }
 }

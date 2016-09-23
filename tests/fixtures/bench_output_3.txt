@@ -1,0 +1,19 @@
+
+running 14 tests
+test ac_one_byte                         ... bench:         354 ns/iter (+/- 9) = 28248 MB/s
+test ac_one_prefix_byte_every_match      ... bench:     150,581 ns/iter (+/- 814) = 66 MB/s
+test ac_one_prefix_byte_no_match         ... bench:         354 ns/iter (+/- 4) = 28248 MB/s
+test ac_one_prefix_byte_random           ... bench:      20,273 ns/iter (+/- 60) = 493 MB/s
+test ac_ten_bytes                        ... bench:     108,092 ns/iter (+/- 683) = 92 MB/s
+test ac_ten_diff_prefix                  ... bench:     108,082 ns/iter (+/- 712) = 92 MB/s
+test ac_ten_one_prefix_byte_every_match  ... bench:     150,561 ns/iter (+/- 824) = 66 MB/s
+test ac_ten_one_prefix_byte_no_match     ... bench:         354 ns/iter (+/- 2) = 28248 MB/s
+test ac_ten_one_prefix_byte_random       ... bench:      23,684 ns/iter (+/- 427) = 422 MB/s
+test ac_two_bytes                        ... bench:       3,138 ns/iter (+/- 11) = 3186 MB/s
+test ac_two_diff_prefix                  ... bench:       3,138 ns/iter (+/- 57) = 3186 MB/s
+test ac_two_one_prefix_byte_every_match  ... bench:     150,571 ns/iter (+/- 1,618) = 66 MB/s
+test ac_two_one_prefix_byte_no_match     ... bench:         354 ns/iter (+/- 2) = 28248 MB/s
+test ac_two_one_prefix_byte_random       ... bench:      21,009 ns/iter (+/- 94) = 476 MB/s
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 14 measured
+

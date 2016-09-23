@@ -12,10 +12,7 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     Regex(regex::Error),
     Io(io::Error),
-    OpenFile {
-        path: PathBuf,
-        err: io::Error,
-    },
+    OpenFile { path: PathBuf, err: io::Error },
 }
 
 impl error::Error for Error {
@@ -41,9 +38,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Regex(ref err) => err.fmt(f),
             Error::Io(ref err) => err.fmt(f),
-            Error::OpenFile { ref path, ref err } => {
-                write!(f, "{}: {}", err, path.display())
-            }
+            Error::OpenFile { ref path, ref err } => write!(f, "{}: {}", err, path.display()),
         }
     }
 }

@@ -5,8 +5,11 @@ extern crate lazy_static;
 extern crate regex;
 #[macro_use]
 extern crate prettytable;
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
 
-use std::io::{self, BufRead, Read};
+use std::io::{self, BufRead};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -72,7 +75,9 @@ struct Args {
 
 #[derive(Debug, RustcDecodable)]
 enum When {
-    Never, Always, Auto
+    Never,
+    Always,
+    Auto,
 }
 
 fn main() {
@@ -87,45 +92,51 @@ fn main() {
 
 impl Args {
     fn run(&self) -> Result<()> {
-        let (name_old, name_new) = self.names();
+        let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
-        let mut output = Table::new();
-        output.set_format(*format::consts::FORMAT_CLEAN);
-        output.add_row(row![
-            b->"name",
-            b->format!("{} ns/iter", name_old),
-            b->format!("{} ns/iter", name_new),
-            br->"diff ns/iter",
-            br->"diff %"
-        ]);
-        for c in benches.comparisons() {
-            let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
-            let regression = c.diff_ns < 0;
-            if self.flag_threshold.map_or(false, |t| abs_per < t)
-                || self.flag_regressions && regression
-                || self.flag_improvements && !regression {
-                continue;
+        if benches.comparisons().len() > 0 {
+            let mut output = Table::new();
+            output.set_format(*format::consts::FORMAT_CLEAN);
+            output.add_row(row![
+                b->"name",
+                b->format!("{} ns/iter", name_old),
+                b->format!("{} ns/iter", name_new),
+                br->"diff ns/iter",
+                br->"diff %"
+            ]);
+            for c in benches.comparisons() {
+                let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
+                let regression = c.diff_ns < 0;
+                if self.flag_threshold.map_or(false, |t| abs_per < t) ||
+                   self.flag_regressions && regression ||
+                   self.flag_improvements && !regression {
+                    continue;
+                }
+                output.add_row(c.to_row(self.flag_variance, regression));
             }
-            output.add_row(c.to_row(self.flag_variance, regression));
-        }
 
-        match self.flag_color {
-            When::Auto => output.printstd(),
-            When::Never => try!(output.print(&mut io::stdout())),
-            When::Always => output.print_tty(true),
+            match self.flag_color {
+                When::Auto => output.printstd(),
+                When::Never => try!(output.print(&mut io::stdout())),
+                When::Always => output.print_tty(true),
+            }
         }
 
         // If there were any unpaired benchmarks, show them now.
         if !benches.missing_old().is_empty() {
-            let missed = benches
-                .missing_old().iter().map(|b| b.name.to_string())
-                .collect::<Vec<String>>().join(", ");
+            let missed = benches.missing_old()
+                .iter()
+                .map(|b| b.name.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
             eprintln!("WARNING: benchmarks in old but not in new: {}", missed);
         }
         if !benches.missing_new().is_empty() {
-            let missed = benches
-                .missing_new().iter().map(|b| b.name.to_string())
-                .collect::<Vec<String>>().join(", ");
+            let missed = benches.missing_new()
+                .iter()
+                .map(|b| b.name.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
             eprintln!("WARNING: benchmarks in new but not in old: {}", missed);
         }
         Ok(())
@@ -135,10 +146,10 @@ impl Args {
     fn parse_benchmarks(&self) -> Result<Benchmarks> {
         if let Some(ref one_file) = self.arg_file {
             if one_file == "-" {
-                let mut buf = String::new();
                 let stdin = io::stdin();
-                try!(stdin.lock().read_to_string(&mut buf));
-                self.parse_buf_benchmarks(&buf)
+                let stdin_lock = stdin.lock();
+                let benches = try!(Args::parse_buffer(stdin_lock));
+                Ok(Benchmarks::from(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new)))
             } else {
                 self.parse_file_benchmarks(one_file)
             }
@@ -150,74 +161,67 @@ impl Args {
     /// Parses benchmarks from two files: one containing old benchmark output
     /// and another containing new benchmark output.
     fn parse_old_new_benchmarks(&self) -> Result<Benchmarks> {
-        let bold = io::BufReader::new(try!(open_file(&self.arg_old)));
-        let bnew = io::BufReader::new(try!(open_file(&self.arg_new)));
+        let b_old = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_old)))));
+        let b_new = try!(Args::parse_buffer(io::BufReader::new(try!(open_file(&self.arg_new)))));
 
-        let mut benches = Benchmarks::new();
-        for line in bold.lines() {
-            let line = try!(line);
-            if let Ok(bench) = line.parse() {
-                benches.add_old(bench);
-            }
-        }
-        for line in bnew.lines() {
-            let line = try!(line);
-            if let Ok(bench) = line.parse() {
-                benches.add_new(bench);
-            }
-        }
-        Ok(benches)
+        Ok(Benchmarks::from((b_old, b_new)))
     }
 
-    /// Parses benchmarks from one file with two prefixes. The first prefix
+    /// Parses benchmarks from one file, then splits on the two prefixes.
+    /// See also: Args::split_benchmarks
+    fn parse_file_benchmarks<P>(&self, file: P) -> Result<Benchmarks>
+        where P: AsRef<Path>
+    {
+        let benches = try!(Args::parse_buffer(io::BufReader::new(try!(File::open(file)))));
+        Ok(Benchmarks::from(Args::split_benchmarks(benches, &self.arg_old, &self.arg_new)))
+    }
+
+    /// Parse benchmarks from a buffered reader.
+    fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
+        let iter = buffer.lines();
+        let mut vec = Vec::with_capacity(iter.size_hint().0);
+        for result in iter {
+            if let Ok(bench) = try!(result).parse() {
+                vec.push(bench)
+            }
+        }
+        Ok(vec)
+    }
+
+    /// Splits benchmarks from one source with two prefixes. The first prefix
     /// identifies benchmarks in the old set and the second prefix identifies
     /// benchmarks in the new set where all benchmarks are found in one file.
-    fn parse_file_benchmarks<P>(
-        &self,
-        file: P,
-    ) -> Result<Benchmarks>
-    where P: AsRef<Path> {
-        // Slurp up the entire file so that we can reuse this code with the
-        // code for reading benchmarks on stdin.
-        let mut buf = String::new();
-        try!(try!(File::open(file)).read_to_string(&mut buf));
-        self.parse_buf_benchmarks(&buf)
-    }
-
-    /// Same as parse_file_benchmarks, but straight from the buffer.
-    fn parse_buf_benchmarks(&self, buf: &str) -> Result<Benchmarks> {
-        let mut benches = Benchmarks::new();
-        for line in buf.lines() {
-            let mut bench: Benchmark = match line.parse() {
-                Err(_) => continue,
-                Ok(bench) => bench,
-            };
-            if bench.name.starts_with(&self.arg_old) {
-                bench.name = bench.name[self.arg_old.len()..].to_string();
-                benches.add_old(bench);
-            } else if bench.name.starts_with(&self.arg_new) {
-                bench.name = bench.name[self.arg_new.len()..].to_string();
-                benches.add_new(bench);
+    fn split_benchmarks(vec: Vec<Benchmark>,
+                        arg_old: &str,
+                        arg_new: &str)
+                        -> (Vec<Benchmark>, Vec<Benchmark>) {
+        let mut b_old = Vec::new();
+        let mut b_new = Vec::new();
+        for mut bench in vec {
+            if bench.name.starts_with(arg_old) {
+                bench.name = bench.name[arg_old.len()..].to_string();
+                b_old.push(bench);
+            } else if bench.name.starts_with(arg_new) {
+                bench.name = bench.name[arg_new.len()..].to_string();
+                b_new.push(bench);
             }
         }
-        Ok(benches)
+        (b_old, b_new)
     }
 
     /// Returns the names that should be used in the column header.
-    fn names(&self) -> (String, String) {
+    fn names(arg_old: &str, arg_new: &str) -> (String, String) {
         // If either of the names are empty, substitute them with defaults.
-        let arg_old =
-            if self.arg_old.is_empty() {
-                "old".to_string()
-            } else {
-                self.arg_old.to_string()
-            };
-        let arg_new =
-            if self.arg_new.is_empty() {
-                "new".to_string()
-            } else {
-                self.arg_new.to_string()
-            };
+        let arg_old = if arg_old.is_empty() {
+            "old".to_string()
+        } else {
+            arg_old.to_string()
+        };
+        let arg_new = if arg_new.is_empty() {
+            "new".to_string()
+        } else {
+            arg_new.to_string()
+        };
         // The names could be either in the prefixes or in the file paths.
         let (old, new) = (Path::new(&arg_old), Path::new(&arg_new));
         // No files paths? Don't do anything smart.
@@ -248,14 +252,11 @@ impl Args {
 }
 
 fn version() -> String {
-    let (maj, min, pat) = (
-        option_env!("CARGO_PKG_VERSION_MAJOR"),
-        option_env!("CARGO_PKG_VERSION_MINOR"),
-        option_env!("CARGO_PKG_VERSION_PATCH"),
-    );
+    let (maj, min, pat) = (option_env!("CARGO_PKG_VERSION_MAJOR"),
+                           option_env!("CARGO_PKG_VERSION_MINOR"),
+                           option_env!("CARGO_PKG_VERSION_PATCH"));
     match (maj, min, pat) {
-        (Some(maj), Some(min), Some(pat)) =>
-            format!("{}.{}.{}", maj, min, pat),
+        (Some(maj), Some(min), Some(pat)) => format!("{}.{}.{}", maj, min, pat),
         _ => "".to_owned(),
     }
 }
@@ -269,4 +270,235 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
             err: err,
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::Arbitrary;
+    use quickcheck::Gen;
+
+    #[derive(Clone, Debug)]
+    struct AlphaString(String);
+
+    impl Arbitrary for AlphaString {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let size = g.size();
+            let size = g.gen_range(1, size);
+            AlphaString(g.gen_ascii_chars().take(size).collect())
+        }
+    }
+
+    mod names {
+        use super::super::Args;
+        use super::AlphaString;
+        use std::path::{Path, PathBuf};
+        use std::ffi::OsStr;
+        use quickcheck::Arbitrary;
+        use quickcheck::Gen;
+
+        #[derive(Clone, Debug)]
+        struct ArbitraryPathBuf(PathBuf);
+
+        impl Arbitrary for ArbitraryPathBuf {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let components = g.size();
+                let components = g.gen_range(1, components);
+                let mut path_buf = PathBuf::new();
+                for _ in 0..components {
+                    let AlphaString(component) = AlphaString::arbitrary(g);
+                    path_buf.push(component);
+                }
+                ArbitraryPathBuf(path_buf)
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        struct ArbitraryPathBufPair(PathBuf, PathBuf);
+
+        impl Arbitrary for ArbitraryPathBufPair {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let components = g.size();
+                let components = g.gen_range(1, components);
+                let mut path_buf1 = PathBuf::new();
+                let mut path_buf2 = PathBuf::new();
+                for component_no in 0..components {
+                    let AlphaString(component) = AlphaString::arbitrary(g);
+                    // further along in the path, the components are less likely to be different
+                    if g.gen_weighted_bool(2 + (component_no / 2) as u32) {
+                        path_buf1.push(component);
+                        let AlphaString(component) = AlphaString::arbitrary(g);
+                        path_buf2.push(component);
+                    } else {
+                        path_buf1.push(component.clone());
+                        path_buf2.push(component);
+                    }
+                }
+                ArbitraryPathBufPair(path_buf1, path_buf2)
+            }
+        }
+
+        quickcheck! {
+            fn empty_gives_old(new_name: AlphaString) -> bool {
+                let AlphaString(new_name) = new_name;
+                let empty = String::from("");
+                let result = Args::names(&empty, &new_name);
+
+                ("old".to_string(), new_name) == result
+            }
+
+            fn empty_gives_new(old_name: AlphaString) -> bool {
+                let AlphaString(old_name) = old_name;
+                let empty = String::from("");
+                let result = Args::names(&old_name, &empty);
+
+                (old_name, "new".to_string()) == result
+            }
+
+            fn non_path_gives_originals(old_name: AlphaString, new_name: AlphaString) -> bool {
+                let AlphaString(old_name) = old_name;
+                let AlphaString(new_name) = new_name;
+                let result = Args::names(&old_name, &new_name);
+
+                (old_name, new_name) == result
+            }
+
+            fn same_path_gives_originals(path: ArbitraryPathBuf) -> bool {
+                let ArbitraryPathBuf(path) = path;
+                let path = path.to_string_lossy().into_owned();
+                let result = Args::names(&path, &path);
+
+                (path.clone(), path) == result
+            }
+
+            fn symmetric_operation(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                (result.1, result.0) == Args::names(&new, &old)
+            }
+
+            fn difference_preserving(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                (old == new) == (result.0 == result.1)
+            }
+
+            fn gives_suffixes(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                old.ends_with(&result.0) && new.ends_with(&result.1)
+            }
+
+            fn shortest_difference(pair: ArbitraryPathBufPair) -> bool {
+                let ArbitraryPathBufPair(old, new) = pair;
+                let old = old.to_string_lossy().into_owned();
+                let new = new.to_string_lossy().into_owned();
+                let result = Args::names(&old, &new);
+
+                let path_0 = Path::new(&result.0);
+                let path_1 = Path::new(&result.1);
+                let path_0: Vec<&OsStr> = path_0.iter().collect();
+                let path_1: Vec<&OsStr> = path_1.iter().collect();
+                let mut zipped = path_0.iter().rev().zip(path_1.iter().rev()).rev();
+                let shortest_difference = zipped.next().map(|(o, n)| o != n).unwrap_or(false);
+                let shortest_difference = shortest_difference && zipped.all(|(o, n)| o == n);
+
+                old == new || path_0.iter().count() <= 1 || path_1.iter().count() <= 1 ||
+                shortest_difference
+            }
+        }
+    }
+
+    mod split_benchmarks {
+        use super::super::Args;
+        use super::AlphaString;
+        use benchmark::Benchmark;
+
+        quickcheck! {
+            fn from_original(benches: Vec<Benchmark>, old: AlphaString, new: AlphaString) -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+
+                result.0.into_iter().all(|mut b| {
+                    b.name = old.clone() + &b.name;
+                    benches.contains(&b)
+                }) &&
+                result.1.into_iter().all(|mut b| {
+                    b.name = new.clone() + &b.name;
+                    benches.contains(&b)
+                })
+            }
+
+            fn non_overlapping(benches: Vec<Benchmark>,
+                               old: AlphaString,
+                               new: AlphaString)
+                               -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+                let mut benches = benches;
+
+                let results: Vec<Benchmark> = result.0
+                    .into_iter()
+                    .map(|mut b| {
+                        b.name = old.clone() + &b.name;
+                        b
+                    })
+                    .chain(result.1.into_iter().map(|mut b| {
+                        b.name = new.clone() + &b.name;
+                        b
+                    }))
+                    .collect();
+
+                for result in results {
+                    if let Some(index) = benches.iter().position(|b| b == &result) {
+                        benches.swap_remove(index);
+                    } else {
+                        return false;
+                    }
+                }
+
+                true
+            }
+
+            fn dropped_non_prefix(benches: Vec<Benchmark>,
+                                  old: AlphaString,
+                                  new: AlphaString)
+                                  -> bool {
+                let AlphaString(old) = old;
+                let AlphaString(new) = new;
+                let result = Args::split_benchmarks(benches.clone(), &old, &new);
+                let mut benches = benches;
+
+                let results: Vec<Benchmark> = result.0
+                    .into_iter()
+                    .map(|mut b| {
+                        b.name = old.clone() + &b.name;
+                        b
+                    })
+                    .chain(result.1.into_iter().map(|mut b| {
+                        b.name = new.clone() + &b.name;
+                        b
+                    }))
+                    .collect();
+
+                for result in results {
+                    if let Some(index) = benches.iter().position(|b| b == &result) {
+                        benches.swap_remove(index);
+                    }
+                }
+
+                benches.into_iter().all(|b| !(b.name.starts_with(&old) || b.name.starts_with(&new)))
+            }
+        }
+    }
 }

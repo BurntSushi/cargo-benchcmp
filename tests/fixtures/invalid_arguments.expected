@@ -1,0 +1,7 @@
+Invalid arguments.
+
+Usage:
+    cargo benchcmp [options] <old> <new>
+    cargo benchcmp [options] <old> <new> <file>
+    cargo benchcmp -h | --help
+    cargo benchcmp --version
