@@ -22,8 +22,8 @@ The resulting binary should then be in `$HOME/.cargo/bin`.
 
 ### Usage
 
-The first argument should be the "old" benchmarks and the second argument
-should be the "new" benchmarks:
+The first argument should be a file path to the "old" benchmarks and
+the second argument should be a file path to the "new" benchmarks:
 
 ```
 $ cargo benchcmp old new
