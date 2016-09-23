@@ -11,14 +11,6 @@ macro_rules! new_scene {
     });
 }
 
-static SAME_INPUT: &'static str = include_str!("fixtures/same_input.expected");
-static DIFFERENT_INPUT: &'static str = include_str!("fixtures/different_input.expected");
-static DIFFERENT_INPUT_SELECTIONS: &'static str = include_str!("fixtures/different_input_selections\
-                                                                .expected");
-
-static NON_OVERLAPPING_INPUT: &'static str = include_str!("fixtures/non_overlapping_input.\
-                                                           expected");
-
 fn new_ucmd() -> second_law::UCommand {
     let mut scene: second_law::Scene = new_scene!();
     scene.subcmd_arg("benchcmp");
@@ -45,7 +37,7 @@ fn help() {
 
 #[test]
 fn same_input() {
-    new_ucmd().args(&["bench_output_1.txt", "bench_output_1.txt"]).succeeds().stdout_is(SAME_INPUT);
+    new_ucmd().args(&["bench_output_1.txt", "bench_output_1.txt"]).succeeds().stdout_is_fixture("same_input.expected");
 }
 
 #[test]
@@ -54,7 +46,7 @@ fn different_input() {
         .args(&["bench_output_2.txt", "bench_output_3.txt"])
         .succeeds()
         .no_stderr()
-        .stdout_is(DIFFERENT_INPUT);
+        .stdout_is_fixture("different_input.expected");
 }
 
 #[test]
@@ -62,7 +54,7 @@ fn non_overlapping_input() {
     new_ucmd()
         .args(&["bench_output_1.txt", "bench_output_2.txt"])
         .succeeds()
-        .stderr_is(NON_OVERLAPPING_INPUT)
+        .stderr_is_fixture("non_overlapping_input.expected")
         .no_stdout();
 }
 
@@ -72,7 +64,7 @@ fn different_input_selections() {
         .args(&["dense::", "dense_boxed::", "bench_output_1.txt"])
         .succeeds()
         .no_stderr()
-        .stdout_is(DIFFERENT_INPUT_SELECTIONS);
+        .stdout_is_fixture("different_input_selections.expected");
 }
 
 #[test]
@@ -82,5 +74,5 @@ fn stdin() {
         .pipe_in_fixture("bench_output_1.txt")
         .succeeds()
         .no_stderr()
-        .stdout_is(DIFFERENT_INPUT_SELECTIONS);
+        .stdout_is_fixture("different_input_selections.expected");
 }
