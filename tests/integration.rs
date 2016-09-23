@@ -29,13 +29,6 @@ fn version() {
 }
 
 #[test]
-fn help() {
-    for same_arg in &["-h", "--help"] {
-        new_ucmd().arg(same_arg).succeeds().no_stderr().stdout_is_fixture("usage.expected");
-    }
-}
-
-#[test]
 fn same_input() {
     new_ucmd().args(&["bench_output_1.txt", "bench_output_1.txt"]).succeeds().stdout_is_fixture("same_input.expected");
 }
