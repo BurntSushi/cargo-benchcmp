@@ -24,3 +24,4 @@ Options:
     --variance           Show the variance of each benchmark.
     --improvements       Show only improvements.
     --regressions        Show only regressions.
+    --color <when>       Show colored rows: never, always or auto [default: auto]
