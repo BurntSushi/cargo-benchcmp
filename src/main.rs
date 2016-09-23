@@ -75,7 +75,9 @@ struct Args {
 
 #[derive(Debug, RustcDecodable)]
 enum When {
-    Never, Always, Auto
+    Never,
+    Always,
+    Auto,
 }
 
 fn main() {
@@ -105,14 +107,14 @@ impl Args {
             for c in benches.comparisons() {
                 let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
                 let regression = c.diff_ns < 0;
-                if self.flag_threshold.map_or(false, |t| abs_per < t)
-                    || self.flag_regressions && regression
-                    || self.flag_improvements && !regression {
+                if self.flag_threshold.map_or(false, |t| abs_per < t) ||
+                   self.flag_regressions && regression ||
+                   self.flag_improvements && !regression {
                     continue;
                 }
                 output.add_row(c.to_row(self.flag_variance, regression));
             }
-            
+
             match self.flag_color {
                 When::Auto => output.printstd(),
                 When::Never => try!(output.print(&mut io::stdout())),
