@@ -55,6 +55,7 @@ Options:
     --variance           Show the variance of each benchmark.
     --improvements       Show only improvements.
     --regressions        Show only regressions.
+    --color <when>       Show colored rows: never, always or auto [default: auto]
 "#;
 
 #[derive(Debug, RustcDecodable)]
@@ -66,6 +67,12 @@ struct Args {
     flag_variance: bool,
     flag_improvements: bool,
     flag_regressions: bool,
+    flag_color: When,
+}
+
+#[derive(Debug, RustcDecodable)]
+enum When {
+    Never, Always, Auto
 }
 
 fn main() {
@@ -85,22 +92,28 @@ impl Args {
         let mut output = Table::new();
         output.set_format(*format::consts::FORMAT_CLEAN);
         output.add_row(row![
-            d->"name",
-            format!("{} ns/iter", name_old),
-            format!("{} ns/iter", name_new),
-            r->"diff ns/iter",
-            r->"diff %"
+            b->"name",
+            b->format!("{} ns/iter", name_old),
+            b->format!("{} ns/iter", name_new),
+            br->"diff ns/iter",
+            br->"diff %"
         ]);
         for c in benches.comparisons() {
             let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
+            let regression = c.diff_ns < 0;
             if self.flag_threshold.map_or(false, |t| abs_per < t)
-                || self.flag_regressions && c.diff_ns <= 0
-                || self.flag_improvements && c.diff_ns >= 0 {
+                || self.flag_regressions && regression
+                || self.flag_improvements && !regression {
                 continue;
             }
-            output.add_row(c.to_row(self.flag_variance));
+            output.add_row(c.to_row(self.flag_variance, regression));
         }
-        output.printstd();
+
+        match self.flag_color {
+            When::Auto => output.printstd(),
+            When::Never => try!(output.print(&mut io::stdout())),
+            When::Always => output.print_tty(true),
+        }
 
         // If there were any unpaired benchmarks, show them now.
         if !benches.missing_old().is_empty() {
