@@ -20,6 +20,10 @@ $ cargo install cargo-benchcmp
 
 The resulting binary should then be in `$HOME/.cargo/bin`.
 
+### Example output
+
+![Coloured example output on aho-corasick benchmarks](coloured_output_example.png)
+
 ### Usage
 
 The first argument should be a file path to the "old" benchmarks and
