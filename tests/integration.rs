@@ -51,6 +51,7 @@ fn non_overlapping_input() {
         .no_stdout();
 }
 
+#[cfg(unix)]
 #[test]
 fn different_input_colored() {
     let mut scene: second_law::Scene = new_scene!();
