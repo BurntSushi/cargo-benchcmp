@@ -51,6 +51,20 @@ fn non_overlapping_input() {
         .no_stdout();
 }
 
+#[cfg(unix)]
+#[test]
+fn different_input_colored() {
+    let mut scene: second_law::Scene = new_scene!();
+    scene.subcmd_arg("benchcmp");
+    // NOTE: keeping the environment here so that terminfo is available,
+    //  which is required to get colour code in the output
+    scene.ucmd_keepenv()
+        .args(&["--color", "always", "bench_output_2.txt", "bench_output_3.txt"])
+        .succeeds()
+        .no_stderr()
+        .stdout_is_fixture("different_input_colored.expected");
+}
+
 #[test]
 fn different_input_selections() {
     new_ucmd()
