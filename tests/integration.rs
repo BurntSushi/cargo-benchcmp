@@ -13,7 +13,6 @@ macro_rules! new_scene {
 
 fn new_ucmd() -> second_law::UCommand {
     let mut scene: second_law::Scene = new_scene!();
-    scene.subcmd_arg("benchcmp");
     scene.ucmd()
 }
 
@@ -55,7 +54,6 @@ fn non_overlapping_input() {
 #[test]
 fn different_input_colored() {
     let mut scene: second_law::Scene = new_scene!();
-    scene.subcmd_arg("benchcmp");
     // NOTE: keeping the environment here so that terminfo is available,
     //  which is required to get colour code in the output
     scene.ucmd_keepenv()
