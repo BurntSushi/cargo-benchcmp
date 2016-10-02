@@ -26,11 +26,23 @@ The resulting binary should then be in `$HOME/.cargo/bin`.
 
 ### Usage
 
-The first argument should be a file path to the "old" benchmarks and
-the second argument should be a file path to the "new" benchmarks:
+First, run your benchmarks and save them to a file:
 
 ```
-$ cargo benchcmp old new
+$ cargo bench > control
+```
+
+Next, apply the changes you'd like to test out, and then run the benchmarks and
+save them to a file again.
+
+```
+$ cargo bench > variable
+```
+
+Finally, use `cargo benchcmp` to compare the benchmark results!
+
+```
+$ cargo benchcmp control variable
 name                                           dynamic-no-lazy-dfa ns/iter  dynamic ns/iter         diff ns/iter   diff %
 bench::anchored_literal_long_match             169 (2,307 MB/s)             75 (5,200 MB/s)                  -94  -55.62%
 bench::anchored_literal_long_non_match         85 (4,588 MB/s)              61 (6,393 MB/s)                  -24  -28.24%
