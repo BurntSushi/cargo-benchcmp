@@ -81,3 +81,12 @@ fn stdin() {
         .no_stderr()
         .stdout_is_fixture("different_input_selections.expected");
 }
+
+#[test]
+fn empty_results() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_5.txt", "--threshold", "1"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("empty_results.expected");
+}
