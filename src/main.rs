@@ -136,10 +136,14 @@ impl Args {
                 output.add_row(c.to_row(self.flag_variance, regression));
             }
 
-            match self.flag_color {
-                When::Auto => output.printstd(),
-                When::Never => try!(output.print(&mut io::stdout())),
-                When::Always => output.print_tty(true),
+            if output.len() > 1 {
+                match self.flag_color {
+                    When::Auto => output.printstd(),
+                    When::Never => try!(output.print(&mut io::stdout())),
+                    When::Always => output.print_tty(true),
+                }
+            } else {
+                eprintln!("WARNING: nothing to output");
             }
         }
 
