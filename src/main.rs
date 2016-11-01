@@ -9,7 +9,6 @@ extern crate prettytable;
 #[macro_use]
 extern crate quickcheck;
 
-use std::env;
 use std::io::{self, BufRead};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -81,28 +80,8 @@ enum When {
     Auto,
 }
 
-fn get_argv() -> Vec<String> {
-    // Unify `cargo benchcmp` and `cargo-benchcmp` invocations' argv by adding
-    // "benchcmp" to the latter.
-
-    let first_arg_is_cargo_benchcmp = env::args().next()
-        .map(|a| a.ends_with("cargo-benchcmp"))
-        .unwrap_or(false);
-
-    let argv: Vec<_> = if first_arg_is_cargo_benchcmp {
-        let mut argv: Vec<_> = env::args().collect();
-        argv.insert(1, "benchcmp".into());
-        argv
-    } else {
-        env::args().collect()
-    };
-
-    argv
-}
-
 fn main() {
     let args: Args = Docopt::new(USAGE)
-        .map(|d| d.argv(get_argv()))
         .and_then(|d| d.version(Some(version())).decode())
         .unwrap_or_else(|e| e.exit());
     if let Err(e) = args.run() {
