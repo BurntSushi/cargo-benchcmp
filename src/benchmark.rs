@@ -154,7 +154,7 @@ impl Benchmark {
         }
     }
 
-    fn fmt_ns(&self, variance: bool) -> String {
+    pub fn fmt_ns(&self, variance: bool) -> String {
         let mut res = commafy(self.ns);
         if variance {
             res = format!("{} (+/- {})", res, self.variance);
