@@ -53,6 +53,8 @@ third file parameter is not needed.
 Options:
     -h, --help           Show this help message and exit.
     --version            Show the version.
+    --include-missing    Show all benchmarks even if they were not in both files.
+                         Produces a WARNING otherwise to let you what was missing.
     --threshold <n>      Show only comparisons with a percentage change greater
                          than this threshold.
     --variance           Show the variance of each benchmark.
@@ -67,6 +69,7 @@ struct Args {
     arg_new: String,
     arg_file: Option<String>,
     flag_threshold: Option<u8>,
+    flag_include_missing: bool,
     flag_variance: bool,
     flag_improvements: bool,
     flag_regressions: bool,
@@ -116,6 +119,16 @@ impl Args {
                 output.add_row(c.to_row(self.flag_variance, regression));
             }
 
+            if self.flag_include_missing {
+                for b in benches.missing_old() {
+                    output.add_row(row![b.name, b.fmt_ns(self.flag_variance), "n/a", r->"n/a", r->"n/a"]);
+                }
+
+                for b in benches.missing_new() {
+                    output.add_row(row![b.name, "n/a", b.fmt_ns(self.flag_variance), r->"n/a", r->"n/a"]);
+                }
+            }
+
             if output.len() > 1 {
                 match self.flag_color {
                     When::Auto => output.printstd(),
@@ -128,7 +141,7 @@ impl Args {
         }
 
         // If there were any unpaired benchmarks, show them now.
-        if !benches.missing_old().is_empty() {
+        if !self.flag_include_missing && !benches.missing_old().is_empty() {
             let missed = benches.missing_old()
                 .iter()
                 .map(|b| b.name.to_string())
@@ -136,7 +149,7 @@ impl Args {
                 .join(", ");
             eprintln!("WARNING: benchmarks in old but not in new: {}", missed);
         }
-        if !benches.missing_new().is_empty() {
+        if !self.flag_include_missing && !benches.missing_new().is_empty() {
             let missed = benches.missing_new()
                 .iter()
                 .map(|b| b.name.to_string())
