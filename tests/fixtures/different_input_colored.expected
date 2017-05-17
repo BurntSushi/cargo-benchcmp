@@ -1,15 +1,15 @@
- [1mname                              (B[m  [1mbench_output_2.txt ns/iter(B[m  [1mbench_output_3.txt ns/iter(B[m  [1mdiff ns/iter(B[m  [1mdiff %(B[m 
- [31mac_one_byte                       (B[m  [31m349 (28653 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           5(B[m  [31m 1.43%(B[m 
- [31mac_one_prefix_byte_every_match    (B[m  [31m112,957 (88 MB/s)         (B[m  [31m150,581 (66 MB/s)         (B[m  [31m      37,624(B[m  [31m33.31%(B[m 
- [31mac_one_prefix_byte_no_match       (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m 
- [31mac_one_prefix_byte_random         (B[m  [31m16,096 (621 MB/s)         (B[m  [31m20,273 (493 MB/s)         (B[m  [31m       4,177(B[m  [31m25.95%(B[m 
- [31mac_ten_bytes                      (B[m  [31m58,588 (170 MB/s)         (B[m  [31m108,092 (92 MB/s)         (B[m  [31m      49,504(B[m  [31m84.50%(B[m 
- [31mac_ten_diff_prefix                (B[m  [31m58,601 (170 MB/s)         (B[m  [31m108,082 (92 MB/s)         (B[m  [31m      49,481(B[m  [31m84.44%(B[m 
- [31mac_ten_one_prefix_byte_every_match(B[m  [31m112,920 (88 MB/s)         (B[m  [31m150,561 (66 MB/s)         (B[m  [31m      37,641(B[m  [31m33.33%(B[m 
- [31mac_ten_one_prefix_byte_no_match   (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m 
- [31mac_ten_one_prefix_byte_random     (B[m  [31m19,181 (521 MB/s)         (B[m  [31m23,684 (422 MB/s)         (B[m  [31m       4,503(B[m  [31m23.48%(B[m 
- [31mac_two_bytes                      (B[m  [31m3,125 (3200 MB/s)         (B[m  [31m3,138 (3186 MB/s)         (B[m  [31m          13(B[m  [31m 0.42%(B[m 
- [31mac_two_diff_prefix                (B[m  [31m3,124 (3201 MB/s)         (B[m  [31m3,138 (3186 MB/s)         (B[m  [31m          14(B[m  [31m 0.45%(B[m 
- [31mac_two_one_prefix_byte_every_match(B[m  [31m112,934 (88 MB/s)         (B[m  [31m150,571 (66 MB/s)         (B[m  [31m      37,637(B[m  [31m33.33%(B[m 
- [31mac_two_one_prefix_byte_no_match   (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m 
- [31mac_two_one_prefix_byte_random     (B[m  [31m16,511 (605 MB/s)         (B[m  [31m21,009 (476 MB/s)         (B[m  [31m       4,498(B[m  [31m27.24%(B[m 
+ [1mname                              (B[m  [1mbench_output_2.txt ns/iter(B[m  [1mbench_output_3.txt ns/iter(B[m  [1mdiff ns/iter(B[m  [1mdiff %(B[m  [1mspeedup(B[m 
+ [31mac_one_byte                       (B[m  [31m349 (28653 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           5(B[m  [31m 1.43%(B[m  [31m x 0.99(B[m 
+ [31mac_one_prefix_byte_every_match    (B[m  [31m112,957 (88 MB/s)         (B[m  [31m150,581 (66 MB/s)         (B[m  [31m      37,624(B[m  [31m33.31%(B[m  [31m x 0.75(B[m 
+ [31mac_one_prefix_byte_no_match       (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m  [31m x 0.99(B[m 
+ [31mac_one_prefix_byte_random         (B[m  [31m16,096 (621 MB/s)         (B[m  [31m20,273 (493 MB/s)         (B[m  [31m       4,177(B[m  [31m25.95%(B[m  [31m x 0.79(B[m 
+ [31mac_ten_bytes                      (B[m  [31m58,588 (170 MB/s)         (B[m  [31m108,092 (92 MB/s)         (B[m  [31m      49,504(B[m  [31m84.50%(B[m  [31m x 0.54(B[m 
+ [31mac_ten_diff_prefix                (B[m  [31m58,601 (170 MB/s)         (B[m  [31m108,082 (92 MB/s)         (B[m  [31m      49,481(B[m  [31m84.44%(B[m  [31m x 0.54(B[m 
+ [31mac_ten_one_prefix_byte_every_match(B[m  [31m112,920 (88 MB/s)         (B[m  [31m150,561 (66 MB/s)         (B[m  [31m      37,641(B[m  [31m33.33%(B[m  [31m x 0.75(B[m 
+ [31mac_ten_one_prefix_byte_no_match   (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m  [31m x 0.99(B[m 
+ [31mac_ten_one_prefix_byte_random     (B[m  [31m19,181 (521 MB/s)         (B[m  [31m23,684 (422 MB/s)         (B[m  [31m       4,503(B[m  [31m23.48%(B[m  [31m x 0.81(B[m 
+ [31mac_two_bytes                      (B[m  [31m3,125 (3200 MB/s)         (B[m  [31m3,138 (3186 MB/s)         (B[m  [31m          13(B[m  [31m 0.42%(B[m  [31m x 1.00(B[m 
+ [31mac_two_diff_prefix                (B[m  [31m3,124 (3201 MB/s)         (B[m  [31m3,138 (3186 MB/s)         (B[m  [31m          14(B[m  [31m 0.45%(B[m  [31m x 1.00(B[m 
+ [31mac_two_one_prefix_byte_every_match(B[m  [31m112,934 (88 MB/s)         (B[m  [31m150,571 (66 MB/s)         (B[m  [31m      37,637(B[m  [31m33.33%(B[m  [31m x 0.75(B[m 
+ [31mac_two_one_prefix_byte_no_match   (B[m  [31m350 (28571 MB/s)          (B[m  [31m354 (28248 MB/s)          (B[m  [31m           4(B[m  [31m 1.14%(B[m  [31m x 0.99(B[m 
+ [31mac_two_one_prefix_byte_random     (B[m  [31m16,511 (605 MB/s)         (B[m  [31m21,009 (476 MB/s)         (B[m  [31m       4,498(B[m  [31m27.24%(B[m  [31m x 0.79(B[m 
