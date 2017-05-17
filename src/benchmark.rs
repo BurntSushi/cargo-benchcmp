@@ -144,11 +144,13 @@ impl Benchmark {
     pub fn compare(self, new: Benchmark) -> Comparison {
         let diff_ns = new.ns as i64 - self.ns as i64;
         let diff_ratio = diff_ns as f64 / self.ns as f64;
+        let speedup = 1.0 / (1.0 + diff_ratio);
         Comparison {
             old: self,
             new: new,
             diff_ns: diff_ns,
             diff_ratio: diff_ratio,
+            speedup: speedup,
         }
     }
 
@@ -176,6 +178,7 @@ pub struct Comparison {
     pub new: Benchmark,
     pub diff_ns: i64,
     pub diff_ratio: f64,
+    pub speedup: f64,
 }
 
 impl Comparison {
@@ -190,6 +193,7 @@ impl Comparison {
         let fst_ns = self.old.fmt_ns(variance);
         let snd_ns = self.new.fmt_ns(variance);
         let diff_ratio = format!("{:.2}%", self.diff_ratio * 100f64);
+        let speedup = format!("x {:.2}", self.speedup);
         let diff_ns = {
             let diff_ns = commafy(self.diff_ns.abs() as u64);
             if self.diff_ns < 0 {
@@ -199,9 +203,9 @@ impl Comparison {
             }
         };
         if regression {
-            row![Fr->name, Fr->fst_ns, Fr->snd_ns, rFr->diff_ns, rFr->diff_ratio]
+            row![Fr->name, Fr->fst_ns, Fr->snd_ns, rFr->diff_ns, rFr->diff_ratio, rFr->speedup]
         } else {
-            row![Fg->name, Fg->fst_ns, Fg->snd_ns, rFg->diff_ns, rFg->diff_ratio]
+            row![Fg->name, Fg->fst_ns, Fg->snd_ns, rFg->diff_ns, rFg->diff_ratio, rFg->speedup]
         }
     }
 }

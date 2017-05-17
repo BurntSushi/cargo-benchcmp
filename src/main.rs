@@ -102,7 +102,8 @@ impl Args {
                 b->format!("{} ns/iter", name_old),
                 b->format!("{} ns/iter", name_new),
                 br->"diff ns/iter",
-                br->"diff %"
+                br->"diff %",
+                br->"speedup"
             ]);
             for c in benches.comparisons() {
                 let abs_per = (c.diff_ratio * 100f64).abs().trunc() as u8;
