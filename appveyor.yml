@@ -14,5 +14,7 @@ install:
 build: false
 
 test_script:
+  # Workaround https://github.com/nathanross/second_law/issues/14
+  - set OUT_DIR=.\target\debug\null\null\null
   - cargo build --verbose
   - cargo test --verbose
