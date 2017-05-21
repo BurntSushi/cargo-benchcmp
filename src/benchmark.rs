@@ -202,7 +202,10 @@ impl Comparison {
                 diff_ns
             }
         };
-        if regression {
+
+        if self.diff_ratio.abs() < 0.03 {
+            row![name, fst_ns, snd_ns, r->diff_ns, r->diff_ratio, r->speedup]
+        } else if regression {
             row![Fr->name, Fr->fst_ns, Fr->snd_ns, rFr->diff_ns, rFr->diff_ratio, rFr->speedup]
         } else {
             row![Fg->name, Fg->fst_ns, Fg->snd_ns, rFg->diff_ns, rFg->diff_ratio, rFg->speedup]
