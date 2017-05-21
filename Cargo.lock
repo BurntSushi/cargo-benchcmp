@@ -1,6 +1,6 @@
 [root]
 name = "cargo-benchcmp"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "docopt 0.6.86 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
