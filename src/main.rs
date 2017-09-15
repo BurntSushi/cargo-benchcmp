@@ -1,10 +1,11 @@
-extern crate rustc_serialize;
 extern crate docopt;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
 #[macro_use]
 extern crate prettytable;
+#[macro_use]
+extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
@@ -63,7 +64,7 @@ Options:
     --color <when>       Show colored rows: never, always or auto [default: auto]
 "#;
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     arg_old: String,
     arg_new: String,
@@ -76,7 +77,7 @@ struct Args {
     flag_color: When,
 }
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 enum When {
     Never,
     Always,
@@ -85,7 +86,7 @@ enum When {
 
 fn main() {
     let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.version(Some(version())).decode())
+        .and_then(|d| d.version(Some(version())).deserialize())
         .unwrap_or_else(|e| e.exit());
     if let Err(e) = args.run() {
         eprintln!("{}", e);
