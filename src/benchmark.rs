@@ -129,7 +129,7 @@ impl FromStr for Benchmark {
             None => return Err(()),
             Some(variance) => variance,
         };
-        let throughput = caps.name("throughput").and_then(parse_commas);
+        let throughput = caps.name("throughput").and_then(|m| parse_commas(m.as_str()));
         Ok(Benchmark {
             name: caps["name"].to_string(),
             ns: ns,
