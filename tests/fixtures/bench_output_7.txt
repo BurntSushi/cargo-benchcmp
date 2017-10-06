@@ -1,0 +1,9 @@
+
+running 84 tests
+test dense::ac_one_byte                               ... bench:         351 ns/iter (+/- 6) = 28653 MB/s
+test dense::ac_one_prefix_byte_every_match            ... bench:     112,960 ns/iter (+/- 1,482) = 88 MB/s
+test dense::ac_one_prefix_byte_no_match               ... bench:         350 ns/iter (+/- 14) = 28571 MB/s
+test dense::ac_one_prefix_byte_random                 ... bench:      16,090 ns/iter (+/- 291) = 621 MB/s
+test dense::ac_ten_bytes                              ... bench:      58,580 ns/iter (+/- 215) = 170 MB/s
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 5 measured

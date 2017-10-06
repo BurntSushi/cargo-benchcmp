@@ -87,8 +87,80 @@ fn stdin() {
 #[test]
 fn empty_results() {
     new_ucmd()
-        .args(&["bench_output_4.txt", "bench_output_5.txt", "--threshold", "1"])
+        .args(&["bench_output_4.txt", "bench_output_5.txt", "--regressions", "--improvements"])
         .succeeds()
         .no_stdout()
         .stderr_is_fixture("empty_results.expected");
+}
+
+#[test]
+fn within_threshold_1_comparing_4_5() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_5.txt", "--threshold", "1"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("4_cmp_5_within_threshold.expected");
+}
+
+#[test]
+fn within_threshold_12_comparing_6_7() {
+    new_ucmd()
+        .args(&["bench_output_6.txt", "bench_output_7.txt", "--threshold", "12"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("6_cmp_7_within_threshold.expected");
+}
+
+#[test]
+fn within_threshold_3_comparing_6_7_improvements() {
+    new_ucmd()
+        .args(&["bench_output_6.txt", "bench_output_7.txt", "--threshold", "3", "--improvements"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("6_cmp_7_within_threshold_improvements.expected");
+}
+
+#[test]
+fn within_threshold_4_comparing_6_7_regressions() {
+    new_ucmd()
+        .args(&["bench_output_6.txt", "bench_output_7.txt", "--threshold", "4", "--regressions"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("6_cmp_7_within_threshold_regressions.expected");
+}
+
+#[test]
+fn zero_regressions() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_5.txt", "--regressions"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("zero_regressions.expected");
+}
+
+#[test]
+fn zero_regressions_threshold() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_5.txt", "--threshold", "2", "--regressions"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("zero_regressions.expected");
+}
+
+#[test]
+fn zero_improvements() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_8.txt", "--improvements"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("zero_improvements.expected");
+}
+
+#[test]
+fn zero_improvements_threshold() {
+    new_ucmd()
+        .args(&["bench_output_4.txt", "bench_output_8.txt", "--threshold", "2", "--improvements"])
+        .succeeds()
+        .no_stdout()
+        .stderr_is_fixture("zero_improvements.expected");
 }

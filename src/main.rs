@@ -137,7 +137,42 @@ impl Args {
                     When::Always => output.print_tty(true),
                 }
             } else {
-                eprintln!("WARNING: nothing to output");
+                let comparisions = benches.comparisons().len();
+                let improvements = benches.comparisons().iter().filter(|c| c.diff_ns <= 0).count();
+                let regressions = comparisions - improvements;
+
+                match (self.flag_threshold, self.flag_improvements, self.flag_regressions) {
+                    (Some(threshold), false, false) => {
+                        eprintln!(
+                            "All ({}) benchmarks are within a {}% threshold",
+                            comparisions,
+                            threshold,
+                        )
+                    }
+                    (Some(threshold), true, false) if improvements > 0 => {
+                        eprintln!(
+                            "All ({}/{}) improvements are within a {}% threshold",
+                            improvements,
+                            comparisions,
+                            threshold,
+                        )
+                    }
+                    (_, true, false) => {
+                        eprintln!("{}/{} benchmarks improved", improvements, comparisions)
+                    }
+                    (Some(threshold), false, true) if regressions > 0 => {
+                        eprintln!(
+                            "All ({}/{}) regressions are within a {}% threshold",
+                            regressions,
+                            comparisions,
+                            threshold,
+                        )
+                    }
+                    (_, false, true) => {
+                        eprintln!("{}/{} benchmarks regressed", regressions, comparisions)
+                    }
+                    _ => eprintln!("WARNING: nothing to output"),
+                }
             }
         }
 
