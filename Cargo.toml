@@ -14,7 +14,7 @@ license = "Unlicense/MIT"
 
 [dependencies]
 docopt = "0.8"
-lazy_static = "0.2.1"
+lazy_static = "1"
 regex = "0.2.2"
 serde = "1.0"
 serde_derive = "1.0"
