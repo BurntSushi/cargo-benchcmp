@@ -4,7 +4,7 @@ authors = [
   "Andrew Gallant <jamslam@gmail.com>",
 ]
 name = "cargo-benchcmp"
-version = "0.2.0"  #:version
+version = "0.3.0"  #:version
 description = "A utility for comparing Rust micro-benchmark output."
 homepage = "https://github.com/BurntSushi/cargo-benchcmp"
 repository = "https://github.com/BurntSushi/cargo-benchcmp"
