@@ -4,7 +4,7 @@ authors = [
   "Andrew Gallant <jamslam@gmail.com>",
 ]
 name = "cargo-benchcmp"
-version = "0.3.0"  #:version
+version = "0.4.0"  #:version
 description = "A utility for comparing Rust micro-benchmark output."
 homepage = "https://github.com/BurntSushi/cargo-benchcmp"
 repository = "https://github.com/BurntSushi/cargo-benchcmp"
@@ -13,9 +13,9 @@ keywords = ["benchmark", "compare", "bench", "micro"]
 license = "Unlicense/MIT"
 
 [dependencies]
-docopt = "0.8"
+docopt = "1"
 lazy_static = "1"
-regex = "0.2.2"
+regex = "1"
 serde = "1.0"
 serde_derive = "1.0"
 
@@ -24,5 +24,5 @@ version = "0.6.6"
 default-features = false # Don't use crlf on windows
 
 [dev-dependencies]
-quickcheck = "0.4"
-second_law = "0.2.1"
+quickcheck = "0.7"
+second_law = "0.3.1"

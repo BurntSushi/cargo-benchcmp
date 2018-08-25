@@ -121,3 +121,9 @@ $ cargo benchcmp old new --regressions --threshold 2
  name                                full:: ns/iter     full_overlap:: ns/iter  diff ns/iter  diff %  speedup
  ac_ten_one_prefix_byte_every_match  27,424 (364 MB/s)  28,046 (356 MB/s)                622   2.27%   x 0.98
 ```
+
+
+### Note: test suite is broken
+
+The test suite for this crate is broken because we coupled it to a dependency
+that is no longer maintained and I haven't had time to fix it.

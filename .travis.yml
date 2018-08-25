@@ -1,12 +1,10 @@
 language: rust
 rust:
-  - 1.20.0
+  - 1.28.0
   - stable
   - beta
   - nightly
 script:
-  # Workaround https://github.com/nathanross/second_law/issues/14
-  - export OUT_DIR=$(pwd)/target/debug/null/null/null
   - cargo build --verbose
   - cargo test --verbose
   - cargo doc
