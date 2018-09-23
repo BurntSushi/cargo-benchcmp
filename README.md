@@ -20,6 +20,12 @@ $ cargo install cargo-benchcmp
 
 The resulting binary should then be in `$HOME/.cargo/bin`.
 
+### Criterion support
+
+This tool only supports the standard benchmark output emitted by `cargo bench`.
+For Criterion support, a different tool was developed called
+[critcmp](https://github.com/BurntSushi/critcmp).
+
 ### Example output
 
 ![Coloured example output on aho-corasick benchmarks](coloured_output_example.png)
