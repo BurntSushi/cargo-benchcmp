@@ -185,6 +185,8 @@ fn non_overlapping_input() {
 #[test]
 fn different_input_colored() {
     new_cmd()
+        // NOTE: keeping the environment here so that terminfo is available,
+        //  which is required to get colour code in the output
         .keep_env()
         .args(&["--color", "always", "bench_output_2.txt", "bench_output_3.txt"])
         .succeeds()
