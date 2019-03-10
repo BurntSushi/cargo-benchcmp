@@ -402,6 +402,9 @@ mod tests {
         use super::super::Benchmark;
         use quickcheck::Arbitrary;
         use quickcheck::Gen;
+        use rand::Rng;
+        use rand::distributions::Alphanumeric;
+        use std::iter;
 
         impl Arbitrary for Benchmark {
             fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -409,7 +412,7 @@ mod tests {
                 let name = {
                     let size = g.size();
                     let size = g.gen_range(1, size);
-                    g.gen_ascii_chars().take(size).collect()
+                    iter::repeat(()).map(|()| g.sample(Alphanumeric)).take(size).collect()
                 };
                 Benchmark {
                     name: name,

@@ -9,6 +9,8 @@ extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
+#[cfg(test)]
+extern crate rand;
 
 use std::io::{self, BufRead};
 use std::fs::File;
@@ -330,6 +332,9 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
 mod tests {
     use quickcheck::Arbitrary;
     use quickcheck::Gen;
+    use rand::Rng;
+    use rand::distributions::Alphanumeric;
+    use std::iter;
 
     #[derive(Clone, Debug)]
     struct AlphaString(String);
@@ -338,7 +343,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let size = g.size();
             let size = g.gen_range(1, size);
-            AlphaString(g.gen_ascii_chars().take(size).collect())
+            AlphaString(iter::repeat(()).map(|()| g.sample(Alphanumeric)).take(size).collect())
         }
     }
 
@@ -349,6 +354,7 @@ mod tests {
         use std::ffi::OsStr;
         use quickcheck::Arbitrary;
         use quickcheck::Gen;
+        use rand::Rng;
 
         #[derive(Clone, Debug)]
         struct ArbitraryPathBuf(PathBuf);
@@ -378,7 +384,7 @@ mod tests {
                 for component_no in 0..components {
                     let AlphaString(component) = AlphaString::arbitrary(g);
                     // further along in the path, the components are less likely to be different
-                    if g.gen_weighted_bool(2 + (component_no / 2) as u32) {
+                    if g.gen_bool(1.0 / (2.0 + (component_no / 2) as f64)) {
                         path_buf1.push(component);
                         let AlphaString(component) = AlphaString::arbitrary(g);
                         path_buf2.push(component);
