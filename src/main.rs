@@ -11,6 +11,7 @@ extern crate serde_derive;
 extern crate quickcheck;
 #[cfg(test)]
 extern crate rand;
+extern crate xml;
 
 use std::io::{self, BufRead};
 use std::fs::File;
@@ -20,6 +21,7 @@ use std::process;
 use docopt::Docopt;
 use prettytable::Table;
 use prettytable::format;
+use xml::writer::{EmitterConfig, XmlEvent, Result as XmlResult};
 
 use benchmark::{Benchmarks, Benchmark};
 use error::{Result, Error};
@@ -77,6 +79,7 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
+    flag_junit: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,6 +103,19 @@ impl Args {
     fn run(&self) -> Result<()> {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
+
+        if !self.flag_junit.is_empty() {
+            let path = PathBuf::from(&self.flag_junit);
+            match create_junit(path, benches) {
+                Ok(_) => { return Ok(()); }
+                Err(e) => {
+                    use std::error::Error;
+                    println!("{}", e.description());
+                    process::exit(1);
+                }
+            }
+        }
+
         if benches.comparisons().len() > 0 {
             let mut output = Table::new();
             output.set_format(*format::consts::FORMAT_CLEAN);
@@ -326,6 +342,50 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
             err: err,
         }
     })
+}
+
+fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResult<()> {
+    let file = File::create(path).unwrap();
+    let mut ew = EmitterConfig::new()
+        .perform_indent(true)
+        .create_writer(file);
+
+    // とりあえずcmpsのみで考える。newにあってoldにない項目の扱いは後で。
+    // ただ、oldでFAILEDだったものかつnewでベンチマークを取れたものに関して、
+    // PairedBenchmarksから取得できるかは微妙。
+
+    let cmps = benches.comparisons();
+
+    let testsuite_name = "benchcmp"; // 暫定
+    let tests = &cmps.len().to_string();
+    let errors = "0"; // エラーなんてなかった
+    let failures = "0"; // 失敗なんてなかった
+    let time = &{
+        let sum = cmps.iter().fold(0, |t, cmp|t + cmp.new.ns);
+        format!("{:.9}", sum as f64 * 0.000_000_001)
+    };
+
+    ew.write(
+        XmlEvent::start_element("testsuite")
+            .attr("name", testsuite_name)
+            .attr("tests", tests)
+            .attr("errors", errors)
+            .attr("failures", failures)
+            .attr("time", time)
+    )?;
+    for cmp in cmps.iter() {
+        let time = &format!("{:.9}", cmp.new.ns as f64 * 0.000_000_001);
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &cmp.new.name)
+                .attr("time", time)
+        )?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    ew.write(XmlEvent::end_element())?;
+
+    Ok(())
 }
 
 #[cfg(test)]
