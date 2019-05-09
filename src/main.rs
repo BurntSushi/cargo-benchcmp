@@ -66,6 +66,7 @@ Options:
     --improvements       Show only improvements.
     --regressions        Show only regressions.
     --color <when>       Show colored rows: never, always or auto [default: auto]
+    --junit <path>       No description.
 "#;
 
 #[derive(Debug, Deserialize)]
@@ -79,7 +80,7 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
-    flag_junit: String,
+    flag_junit: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,8 +105,8 @@ impl Args {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
 
-        if !self.flag_junit.is_empty() {
-            let path = PathBuf::from(&self.flag_junit);
+        if let Some(ref junit_path) = self.flag_junit {
+            let path = PathBuf::from(junit_path);
             match create_junit(path, benches) {
                 Ok(_) => { return Ok(()); }
                 Err(e) => {
@@ -355,11 +356,20 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
     // PairedBenchmarksから取得できるかは微妙。
 
     let cmps = benches.comparisons();
+    let failures_iter = {
+        let a = benches.failures().iter().filter(|(_, b)|b.failed).map(|(_, b)|b);
+        let b = benches.missing_new().iter().filter(|b|b.failed);
+        a.chain(b)
+    };
 
     let testsuite_name = "benchcmp"; // 暫定
     let tests = &cmps.len().to_string();
     let errors = "0"; // エラーなんてなかった
-    let failures = "0"; // 失敗なんてなかった
+    let failures = &{
+        // let sum = failures.count();
+        // sum.to_string()
+        0.to_string()
+    };
     let time = &{
         let sum = cmps.iter().fold(0, |t, cmp|t + cmp.new.ns);
         format!("{:.9}", sum as f64 * 0.000_000_001)
@@ -381,6 +391,22 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
                 .attr("name", &cmp.new.name)
                 .attr("time", time)
         )?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    for f in failures_iter {
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &f.name)
+                .attr("time", "0")
+        )?;
+            ew.write(
+                XmlEvent::start_element("failure")
+                    .attr("type", "FAILED")
+                    .attr("message", "")
+            )?;
+            ew.write("any error message.")
+            ew.write(XmlEvent::end_element())?;
         ew.write(XmlEvent::end_element())?;
     }
     ew.write(XmlEvent::end_element())?;
