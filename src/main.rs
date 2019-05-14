@@ -409,7 +409,7 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
             ew.write(
                 XmlEvent::start_element("failure")
                     .attr("type", "FAILED")
-                    .attr("message", &format!("thread `{}`", msg.thread))
+                    .attr("message", "")
             )?;
             ew.write(msg.msg.as_str())?;
             ew.write(XmlEvent::end_element())?;

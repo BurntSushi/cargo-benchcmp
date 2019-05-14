@@ -212,7 +212,6 @@ impl Benchmark {
 #[derive(Clone, Debug)]
 pub struct FailedMsg {
     pub name: String,
-    pub thread: String,
     pub msg: String,
 }
 
@@ -222,12 +221,11 @@ pub struct FailedMsgBuilder {
 
 impl FailedMsgBuilder {
     pub fn build(self, line: &str) -> Result<FailedMsg, ()> {
-        match BENCHMARK_REGEX_FAILED_MESSAGE2.captures(line) {
+        match BENCHMARK_REGEX_FAILED_MESSAGE2.find(line) {
             Some(caps) => {
                 Ok(FailedMsg{
                     name: self.name,
-                    thread: caps["thread"].to_string(),
-                    msg: caps["msg"].to_string(),
+                    msg: caps.as_str().to_string(),
                 })
             }
             None => Err(())
