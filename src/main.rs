@@ -351,25 +351,24 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
         .perform_indent(true)
         .create_writer(file);
 
-    // とりあえずcmpsのみで考える。newにあってoldにない項目の扱いは後で。
-    // ただ、oldでFAILEDだったものかつnewでベンチマークを取れたものに関して、
-    // PairedBenchmarksから取得できるかは微妙。
-
     let cmps = benches.comparisons();
+
     let failures_iter = {
-        let a = benches.failures().iter().filter(|(_, b)|b.failed).map(|(_, b)|b);
+        let a = benches.failures().iter();
         let b = benches.missing_new().iter().filter(|b|b.failed);
         a.chain(b)
     };
 
-    let testsuite_name = "benchcmp"; // 暫定
-    let tests = &cmps.len().to_string();
-    let errors = "0"; // エラーなんてなかった
-    let failures = &{
-        // let sum = failures.count();
-        // sum.to_string()
-        0.to_string()
+    let new_benchmarks_iter = {
+        let a = benches.new_benchmarks().iter();
+        let b = benches.missing_new().iter().filter(|b|!b.failed);
+        a.chain(b)
     };
+
+    let testsuite_name = "benchcmp"; // 暫定
+    let errors = 0; // エラーなんてなかった
+    let failures = failures_iter.clone().count();
+    let tests = cmps.len() + errors + failures;
     let time = &{
         let sum = cmps.iter().fold(0, |t, cmp|t + cmp.new.ns);
         format!("{:.9}", sum as f64 * 0.000_000_001)
@@ -378,9 +377,9 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
     ew.write(
         XmlEvent::start_element("testsuite")
             .attr("name", testsuite_name)
-            .attr("tests", tests)
-            .attr("errors", errors)
-            .attr("failures", failures)
+            .attr("tests", &tests.to_string())
+            .attr("errors", &errors.to_string())
+            .attr("failures", &failures.to_string())
             .attr("time", time)
     )?;
     for cmp in cmps.iter() {
@@ -405,7 +404,7 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
                     .attr("type", "FAILED")
                     .attr("message", "")
             )?;
-            ew.write("any error message.")
+            ew.write("any error message.")?;
             ew.write(XmlEvent::end_element())?;
         ew.write(XmlEvent::end_element())?;
     }

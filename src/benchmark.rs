@@ -35,10 +35,10 @@ impl Benchmarks {
 #[derive(Clone, Debug)]
 pub struct PairedBenchmarks {
     cmps: Vec<Comparison>,
+    failed: Vec<Benchmark>,
+    benched_new: Vec<Benchmark>,
     unpaired_old: Vec<Benchmark>,
     unpaired_new: Vec<Benchmark>,
-    failed: Vec<(Benchmark, Benchmark)>,
-    // newでFAILEDだったものだけか、どちらかがFAILEDのComparisonの配列か...
 }
 
 impl From<Benchmarks> for PairedBenchmarks {
@@ -47,17 +47,18 @@ impl From<Benchmarks> for PairedBenchmarks {
         benches.new.sort();
         let ov = Overlap::find(benches.old, benches.new, Benchmark::cmp);
 
-        // ov.overlap: Vec<(Benchmark, Benchmark)> に関して、
-        // どちらかがfailedの組を選んで分ける
-        let (failed, overlap): (Vec<(Benchmark, Benchmark)>, _)
-            = ov.overlap.into_iter().partition(|(a, b)| a.failed || b.failed);
+        let (failed, benched): (Vec<(Benchmark, Benchmark)>, _)
+            = ov.overlap.into_iter().partition(|(_o, n)| n.failed);
+        let (benched_new, overlap): (Vec<(Benchmark, Benchmark)>, _)
+            = benched.into_iter().partition(|(o, _n)| o.failed);
 
         let cmps = overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
         PairedBenchmarks {
             cmps: cmps,
+            failed: failed.into_iter().map(|(_, n)|n).collect(),
+            benched_new: benched_new.into_iter().map(|(_, n)|n).collect(),
             unpaired_old: ov.left,
             unpaired_new: ov.right,
-            failed: failed,
         }
     }
 }
@@ -82,8 +83,14 @@ impl PairedBenchmarks {
         &self.unpaired_new
     }
 
-    pub fn failures(&self) -> &[(Benchmark, Benchmark)] {
+    pub fn failures(&self) -> &[Benchmark] {
+        // old: _, new: FAILED
         &self.failed
+    }
+
+    pub fn new_benchmarks(&self) -> &[Benchmark] {
+        // old: FAILED, new: benched
+        &self.benched_new
     }
 }
 
