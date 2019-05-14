@@ -23,7 +23,7 @@ use prettytable::Table;
 use prettytable::format;
 use xml::writer::{EmitterConfig, XmlEvent, Result as XmlResult};
 
-use benchmark::{Benchmarks, Benchmark};
+use benchmark::{Benchmarks, Benchmark, FailedMsgBuilder};
 use error::{Result, Error};
 
 mod benchmark;
@@ -66,6 +66,7 @@ Options:
     --improvements       Show only improvements.
     --regressions        Show only regressions.
     --color <when>       Show colored rows: never, always or auto [default: auto]
+    --junit <path>       No description.
 "#;
 
 #[derive(Debug, Deserialize)]
@@ -79,7 +80,7 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
-    flag_junit: String,
+    flag_junit: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,8 +105,8 @@ impl Args {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
 
-        if !self.flag_junit.is_empty() {
-            let path = PathBuf::from(&self.flag_junit);
+        if let Some(ref junit_path) = self.flag_junit {
+            let path = PathBuf::from(junit_path);
             match create_junit(path, benches) {
                 Ok(_) => { return Ok(()); }
                 Err(e) => {
@@ -250,11 +251,17 @@ impl Args {
 
     /// Parse benchmarks from a buffered reader.
     fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
-        let iter = buffer.lines();
-        let mut vec = Vec::with_capacity(iter.size_hint().0);
-        for result in iter {
-            if let Ok(bench) = try!(result).parse() {
-                vec.push(bench)
+        let mut iter = buffer.lines();
+        let mut vec: Vec<Benchmark> = Vec::with_capacity(iter.size_hint().0);
+        while let Some(Ok(result)) = iter.next() {
+            if let Ok(bench) = result.parse() {
+                vec.push(bench);
+            } else if let Ok(msg) = result.parse::<FailedMsgBuilder>() {
+                if let Ok(msg) = msg.build(&iter.next().unwrap().unwrap()) {
+                    if let Some(b) = vec.iter_mut().find(|b|b.name == msg.name) {
+                        b.failed = Some(msg);
+                    }
+                }
             }
         }
         Ok(vec)
@@ -350,16 +357,24 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
         .perform_indent(true)
         .create_writer(file);
 
-    // とりあえずcmpsのみで考える。newにあってoldにない項目の扱いは後で。
-    // ただ、oldでFAILEDだったものかつnewでベンチマークを取れたものに関して、
-    // PairedBenchmarksから取得できるかは微妙。
-
     let cmps = benches.comparisons();
 
+    let failures_iter = {
+        let a = benches.failures().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed.is_some());
+        a.chain(b)
+    };
+
+    let new_benchmarks_iter = {
+        let a = benches.new_benchmarks().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed.is_none());
+        a.chain(b)
+    };
+
     let testsuite_name = "benchcmp"; // 暫定
-    let tests = &cmps.len().to_string();
-    let errors = "0"; // エラーなんてなかった
-    let failures = "0"; // 失敗なんてなかった
+    let errors = 0; // エラーなんてなかった
+    let failures = failures_iter.clone().count();
+    let tests = cmps.len() + errors + failures;
     let time = &{
         let sum = cmps.iter().fold(0, |t, cmp|t + cmp.new.ns);
         format!("{:.9}", sum as f64 * 0.000_000_001)
@@ -368,9 +383,9 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
     ew.write(
         XmlEvent::start_element("testsuite")
             .attr("name", testsuite_name)
-            .attr("tests", tests)
-            .attr("errors", errors)
-            .attr("failures", failures)
+            .attr("tests", &tests.to_string())
+            .attr("errors", &errors.to_string())
+            .attr("failures", &failures.to_string())
             .attr("time", time)
     )?;
     for cmp in cmps.iter() {
@@ -381,6 +396,23 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
                 .attr("name", &cmp.new.name)
                 .attr("time", time)
         )?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    for f in failures_iter {
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &f.name)
+                .attr("time", "0")
+        )?;
+            let msg = f.failed.as_ref().unwrap();
+            ew.write(
+                XmlEvent::start_element("failure")
+                    .attr("type", "FAILED")
+                    .attr("message", "")
+            )?;
+            ew.write(msg.msg.as_str())?;
+            ew.write(XmlEvent::end_element())?;
         ew.write(XmlEvent::end_element())?;
     }
     ew.write(XmlEvent::end_element())?;
