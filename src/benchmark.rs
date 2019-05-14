@@ -48,9 +48,9 @@ impl From<Benchmarks> for PairedBenchmarks {
         let ov = Overlap::find(benches.old, benches.new, Benchmark::cmp);
 
         let (failed, benched): (Vec<(Benchmark, Benchmark)>, _)
-            = ov.overlap.into_iter().partition(|(_o, n)| n.failed);
+            = ov.overlap.into_iter().partition(|(_o, n)| n.failed.is_some());
         let (benched_new, overlap): (Vec<(Benchmark, Benchmark)>, _)
-            = benched.into_iter().partition(|(o, _n)| o.failed);
+            = benched.into_iter().partition(|(o, _n)| o.failed.is_some());
 
         let cmps = overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
         PairedBenchmarks {
@@ -101,7 +101,7 @@ pub struct Benchmark {
     pub ns: u64,
     pub variance: u64,
     pub throughput: Option<u64>,
-    pub failed: bool,
+    pub failed: Option<FailedMsg>,
 }
 
 impl Eq for Benchmark {}
@@ -136,6 +136,15 @@ lazy_static! {
         test\s+(?P<name>\S+)                        # test   mod::test_name
         \s+...\sFAILED                              # ... FAILED
     "##).unwrap();
+
+    static ref BENCHMARK_REGEX_FAILED_MESSAGE1: Regex = Regex::new(r##"(?x)
+        ----\s(?P<name>\S+)\sstdout\s----           # ---- bench::it_works stdout ----
+    "##).unwrap();
+
+    static ref BENCHMARK_REGEX_FAILED_MESSAGE2: Regex = Regex::new(r##"(?x)
+        thread\s'(?P<thread>\S+)'                   # thread 'main'
+        \s+panicked\sat\s'(?P<msg>.+)'              # panicked at 'called `Option::unwrap()` on a `None` value'
+    "##).unwrap();
 }
 
 impl FromStr for Benchmark {
@@ -146,7 +155,6 @@ impl FromStr for Benchmark {
         if let Some(caps) = BENCHMARK_REGEX_FAILED.captures(line) {
             Ok(Benchmark {
                 name: caps["name"].to_string(),
-                failed: true,
                 .. Default::default()
             })
         } else {
@@ -168,7 +176,7 @@ impl FromStr for Benchmark {
                 ns: ns,
                 variance: variance,
                 throughput: throughput,
-                failed: false,
+                failed: None,
             })
         }
     }
@@ -198,6 +206,43 @@ impl Benchmark {
             res = format!("{} ({} MB/s)", res, throughput);
         }
         res
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FailedMsg {
+    pub name: String,
+    pub thread: String,
+    pub msg: String,
+}
+
+pub struct FailedMsgBuilder {
+    name: String,
+}
+
+impl FailedMsgBuilder {
+    pub fn build(self, line: &str) -> Result<FailedMsg, ()> {
+        match BENCHMARK_REGEX_FAILED_MESSAGE2.captures(line) {
+            Some(caps) => {
+                Ok(FailedMsg{
+                    name: self.name,
+                    thread: caps["thread"].to_string(),
+                    msg: caps["msg"].to_string(),
+                })
+            }
+            None => Err(())
+        }
+    }
+}
+
+impl FromStr for FailedMsgBuilder {
+    type Err = ();
+
+    fn from_str(line: &str) -> Result<FailedMsgBuilder, ()> {
+        match BENCHMARK_REGEX_FAILED_MESSAGE1.captures(line) {
+            Some(caps) => Ok(FailedMsgBuilder{ name: caps["name"].to_string() }),
+            None => Err(())
+        }
     }
 }
 

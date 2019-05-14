@@ -15,7 +15,7 @@ test benches::nullable_intersection ... bench:          75 ns/iter (+/- 1)
 failures:
 
 ---- benches::includes stdout ----
-thread 'main' panicked at 'aaa!', benches/benchmark.rs:25:13
+thread 'main' panicked at 'assertion failed: false', benches/benchmark.rs:25:13
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 
@@ -23,4 +23,3 @@ failures:
     benches::includes
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 5 measured; 0 filtered out
-
