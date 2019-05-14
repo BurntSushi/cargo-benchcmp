@@ -23,7 +23,7 @@ use prettytable::Table;
 use prettytable::format;
 use xml::writer::{EmitterConfig, XmlEvent, Result as XmlResult};
 
-use benchmark::{Benchmarks, Benchmark};
+use benchmark::{Benchmarks, Benchmark, FailedMsgBuilder};
 use error::{Result, Error};
 
 mod benchmark;
@@ -251,11 +251,17 @@ impl Args {
 
     /// Parse benchmarks from a buffered reader.
     fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
-        let iter = buffer.lines();
-        let mut vec = Vec::with_capacity(iter.size_hint().0);
-        for result in iter {
-            if let Ok(bench) = try!(result).parse() {
-                vec.push(bench)
+        let mut iter = buffer.lines();
+        let mut vec: Vec<Benchmark> = Vec::with_capacity(iter.size_hint().0);
+        while let Some(Ok(result)) = iter.next() {
+            if let Ok(bench) = result.parse() {
+                vec.push(bench);
+            } else if let Ok(msg) = result.parse::<FailedMsgBuilder>() {
+                if let Ok(msg) = msg.build(&iter.next().unwrap().unwrap()) {
+                    if let Some(b) = vec.iter_mut().find(|b|b.name == msg.name) {
+                        b.failed = Some(msg);
+                    }
+                }
             }
         }
         Ok(vec)
@@ -355,13 +361,13 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
 
     let failures_iter = {
         let a = benches.failures().iter();
-        let b = benches.missing_new().iter().filter(|b|b.failed);
+        let b = benches.missing_new().iter().filter(|b|b.failed.is_some());
         a.chain(b)
     };
 
     let new_benchmarks_iter = {
         let a = benches.new_benchmarks().iter();
-        let b = benches.missing_new().iter().filter(|b|!b.failed);
+        let b = benches.missing_new().iter().filter(|b|b.failed.is_none());
         a.chain(b)
     };
 
@@ -399,12 +405,13 @@ fn create_junit(path: PathBuf, benches: benchmark::PairedBenchmarks) -> XmlResul
                 .attr("name", &f.name)
                 .attr("time", "0")
         )?;
+            let msg = f.failed.as_ref().unwrap();
             ew.write(
                 XmlEvent::start_element("failure")
                     .attr("type", "FAILED")
                     .attr("message", "")
             )?;
-            ew.write("any error message.")?;
+            ew.write(msg.msg.as_str())?;
             ew.write(XmlEvent::end_element())?;
         ew.write(XmlEvent::end_element())?;
     }
