@@ -375,8 +375,10 @@ fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<(
         .perform_indent(true)
         .create_writer(BufWriter::new(file));
 
-    let testsuite_name = "benchcmp"; // 暫定
-    let errors = 0; // エラーなんてなかった
+    // provisional
+    let testsuite_name = "benchcmp";
+    // There is no error factor currently used.
+    let errors = 0;
     let failures = failures_iter.clone().count();
     let tests = cmps.len() + errors + failures;
     let time = &{
