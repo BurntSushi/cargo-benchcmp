@@ -11,8 +11,9 @@ extern crate serde_derive;
 extern crate quickcheck;
 #[cfg(test)]
 extern crate rand;
+extern crate xml;
 
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, BufWriter};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -20,8 +21,9 @@ use std::process;
 use docopt::Docopt;
 use prettytable::Table;
 use prettytable::format;
+use xml::writer::{EmitterConfig, XmlEvent, Result as XmlResult};
 
-use benchmark::{Benchmarks, Benchmark};
+use benchmark::{Benchmarks, Benchmark, FailedMsgBuilder};
 use error::{Result, Error};
 
 mod benchmark;
@@ -64,6 +66,7 @@ Options:
     --improvements       Show only improvements.
     --regressions        Show only regressions.
     --color <when>       Show colored rows: never, always or auto [default: auto]
+    --junit <path>       Create junit-format xml file with given path.
 "#;
 
 #[derive(Debug, Deserialize)]
@@ -77,6 +80,7 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
+    flag_junit: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,6 +104,18 @@ impl Args {
     fn run(&self) -> Result<()> {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
+
+        if let Some(ref path) = self.flag_junit {
+            match create_junit(path, benches) {
+                Ok(_) => { return Ok(()); }
+                Err(e) => {
+                    use std::error::Error;
+                    println!("{}", e.description());
+                    process::exit(1);
+                }
+            }
+        }
+
         if benches.comparisons().len() > 0 {
             let mut output = Table::new();
             output.set_format(*format::consts::FORMAT_CLEAN);
@@ -234,11 +250,17 @@ impl Args {
 
     /// Parse benchmarks from a buffered reader.
     fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
-        let iter = buffer.lines();
-        let mut vec = Vec::with_capacity(iter.size_hint().0);
-        for result in iter {
-            if let Ok(bench) = try!(result).parse() {
-                vec.push(bench)
+        let mut iter = buffer.lines();
+        let mut vec: Vec<Benchmark> = Vec::with_capacity(iter.size_hint().0);
+        while let Some(Ok(result)) = iter.next() {
+            if let Ok(bench) = result.parse() {
+                vec.push(bench);
+            } else if let Ok(msg) = result.parse::<FailedMsgBuilder>() {
+                if let Ok(msg) = msg.build(&iter.next().unwrap().unwrap()) {
+                    if let Some(b) = vec.iter_mut().find(|b|b.name == msg.name) {
+                        b.failed_msg = Some(msg);
+                    }
+                }
             }
         }
         Ok(vec)
@@ -326,6 +348,93 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
             err: err,
         }
     })
+}
+
+/// Create junit-format xml file with given path when junit flag on.
+fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<()>
+    where P: AsRef<Path>
+{
+    let cmps = benches.comparisons();
+
+    // An iter of all failed test cases in the new set.
+    let failures_iter = {
+        let a = benches.failures().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed_msg.is_some());
+        a.chain(b)
+    };
+
+    // An iter of all benchmarked test cases in the new set.
+    let new_benchmarks_iter = {
+        let a = benches.new_benchmarks().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed_msg.is_none());
+        a.chain(b)
+    };
+
+    let file = File::create(path)?;
+    let mut ew = EmitterConfig::new()
+        .perform_indent(true)
+        .create_writer(BufWriter::new(file));
+
+    // provisional
+    let testsuite_name = "benchcmp";
+    // There is no error factor currently used.
+    let errors = 0;
+    let failures = failures_iter.clone().count();
+    let tests = cmps.len() + errors + failures;
+    let time = &{
+        let sum = cmps.iter().fold(0, |t, cmp|t + cmp.new.ns);
+        format!("{:.9}", sum as f64 * 0.000_000_001)
+    };
+
+    // Add elements of xml.
+    ew.write(
+        XmlEvent::start_element("testsuite")
+            .attr("name", testsuite_name)
+            .attr("tests", &tests.to_string())
+            .attr("errors", &errors.to_string())
+            .attr("failures", &failures.to_string())
+            .attr("time", time)
+    )?;
+    for cmp in cmps.iter() {
+        let time = &format!("{:.9}", cmp.new.ns as f64 * 0.000_000_001);
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &cmp.new.name)
+                .attr("time", time)
+        )?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    for new in new_benchmarks_iter {
+        let time = &format!("{:.9}", new.ns as f64 * 0.000_000_001);
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &new.name)
+                .attr("time", time)
+        )?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    for f in failures_iter {
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &f.name)
+                .attr("time", "0")
+        )?;
+            let msg = f.failed_msg.as_ref().unwrap();
+            ew.write(
+                XmlEvent::start_element("failure")
+                    .attr("type", "FAILED")
+                    .attr("message", "")
+            )?;
+            ew.write(msg.msg.as_str())?;
+            ew.write(XmlEvent::end_element())?;
+        ew.write(XmlEvent::end_element())?;
+    }
+    ew.write(XmlEvent::end_element())?;
+
+    Ok(())
 }
 
 #[cfg(test)]

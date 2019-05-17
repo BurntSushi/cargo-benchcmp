@@ -35,6 +35,8 @@ impl Benchmarks {
 #[derive(Clone, Debug)]
 pub struct PairedBenchmarks {
     cmps: Vec<Comparison>,
+    failed: Vec<Benchmark>,
+    benched_new: Vec<Benchmark>,
     unpaired_old: Vec<Benchmark>,
     unpaired_new: Vec<Benchmark>,
 }
@@ -44,9 +46,17 @@ impl From<Benchmarks> for PairedBenchmarks {
         benches.old.sort();
         benches.new.sort();
         let ov = Overlap::find(benches.old, benches.new, Benchmark::cmp);
-        let cmps = ov.overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
+
+        let (failed, benched): (Vec<(Benchmark, Benchmark)>, _)
+            = ov.overlap.into_iter().partition(|(_o, n)| n.failed_msg.is_some());
+        let (benched_new, overlap): (Vec<(Benchmark, Benchmark)>, _)
+            = benched.into_iter().partition(|(o, _n)| o.failed_msg.is_some());
+
+        let cmps = overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
         PairedBenchmarks {
             cmps: cmps,
+            failed: failed.into_iter().map(|(_, n)|n).collect(),
+            benched_new: benched_new.into_iter().map(|(_, n)|n).collect(),
             unpaired_old: ov.left,
             unpaired_new: ov.right,
         }
@@ -72,15 +82,30 @@ impl PairedBenchmarks {
     pub fn missing_new(&self) -> &[Benchmark] {
         &self.unpaired_new
     }
+
+    /// Returns all benchmarks that were failed in the new set that were passed
+    /// in the old set.
+    pub fn failures(&self) -> &[Benchmark] {
+        // old: _, new: FAILED
+        &self.failed
+    }
+
+    /// Returns all benchmarks that were passed in the new set that were failed
+    /// in the old set.
+    pub fn new_benchmarks(&self) -> &[Benchmark] {
+        // old: FAILED, new: benched
+        &self.benched_new
+    }
 }
 
 /// All extractable data from a single micro-benchmark.
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct Benchmark {
     pub name: String,
     pub ns: u64,
     pub variance: u64,
     pub throughput: Option<u64>,
+    pub failed_msg: Option<FailedMsg>,
 }
 
 impl Eq for Benchmark {}
@@ -110,6 +135,20 @@ lazy_static! {
         \s+\(\+/-\s+(?P<variance>[0-9,]+)\)         # (+/- 4321)
         (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314 MB/s
     "##).unwrap();
+
+    static ref BENCHMARK_REGEX_FAILED: Regex = Regex::new(r##"(?x)
+        test\s+(?P<name>\S+)                        # test   mod::test_name
+        \s+...\sFAILED                              # ... FAILED
+    "##).unwrap();
+
+    static ref BENCHMARK_REGEX_FAILED_MESSAGE1: Regex = Regex::new(r##"(?x)
+        ----\s(?P<name>\S+)\sstdout\s----           # ---- bench::it_works stdout ----
+    "##).unwrap();
+
+    static ref BENCHMARK_REGEX_FAILED_MESSAGE2: Regex = Regex::new(r##"(?x)
+        thread\s'(?P<thread>\S+)'                   # thread 'main'
+        \s+panicked\sat\s'(?P<msg>.+)'              # panicked at 'called `Option::unwrap()` on a `None` value'
+    "##).unwrap();
 }
 
 impl FromStr for Benchmark {
@@ -117,25 +156,33 @@ impl FromStr for Benchmark {
 
     /// Parses a single benchmark line into a Benchmark.
     fn from_str(line: &str) -> Result<Benchmark, ()> {
-        let caps = match BENCHMARK_REGEX.captures(line) {
-            None => return Err(()),
-            Some(caps) => caps,
-        };
-        let ns = match parse_commas(&caps["ns"]) {
-            None => return Err(()),
-            Some(ns) => ns,
-        };
-        let variance = match parse_commas(&caps["variance"]) {
-            None => return Err(()),
-            Some(variance) => variance,
-        };
-        let throughput = caps.name("throughput").and_then(|m| parse_commas(m.as_str()));
-        Ok(Benchmark {
-            name: caps["name"].to_string(),
-            ns: ns,
-            variance: variance,
-            throughput: throughput,
-        })
+        if let Some(caps) = BENCHMARK_REGEX_FAILED.captures(line) {
+            Ok(Benchmark {
+                name: caps["name"].to_string(),
+                .. Default::default()
+            })
+        } else {
+            let caps = match BENCHMARK_REGEX.captures(line) {
+                None => return Err(()),
+                Some(caps) => caps,
+            };
+            let ns = match parse_commas(&caps["ns"]) {
+                None => return Err(()),
+                Some(ns) => ns,
+            };
+            let variance = match parse_commas(&caps["variance"]) {
+                None => return Err(()),
+                Some(variance) => variance,
+            };
+            let throughput = caps.name("throughput").and_then(|m| parse_commas(m.as_str()));
+            Ok(Benchmark {
+                name: caps["name"].to_string(),
+                ns: ns,
+                variance: variance,
+                throughput: throughput,
+                failed_msg: None,
+            })
+        }
     }
 }
 
@@ -163,6 +210,42 @@ impl Benchmark {
             res = format!("{} ({} MB/s)", res, throughput);
         }
         res
+    }
+}
+
+/// Error message struct that all failed test cases have.
+#[derive(Clone, Debug)]
+pub struct FailedMsg {
+    pub name: String,
+    pub msg: String,
+}
+
+pub struct FailedMsgBuilder {
+    name: String,
+}
+
+impl FailedMsgBuilder {
+    pub fn build(self, line: &str) -> Result<FailedMsg, ()> {
+        match BENCHMARK_REGEX_FAILED_MESSAGE2.find(line) {
+            Some(caps) => {
+                Ok(FailedMsg{
+                    name: self.name,
+                    msg: caps.as_str().to_string(),
+                })
+            }
+            None => Err(())
+        }
+    }
+}
+
+impl FromStr for FailedMsgBuilder {
+    type Err = ();
+
+    fn from_str(line: &str) -> Result<FailedMsgBuilder, ()> {
+        match BENCHMARK_REGEX_FAILED_MESSAGE1.captures(line) {
+            Some(caps) => Ok(FailedMsgBuilder{ name: caps["name"].to_string() }),
+            None => Err(())
+        }
     }
 }
 
