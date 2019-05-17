@@ -13,7 +13,7 @@ extern crate quickcheck;
 extern crate rand;
 extern crate xml;
 
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, BufWriter};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -66,11 +66,7 @@ Options:
     --improvements       Show only improvements.
     --regressions        Show only regressions.
     --color <when>       Show colored rows: never, always or auto [default: auto]
-<<<<<<< HEAD
     --junit <path>       Create junit-format xml file with given path.
-=======
-    --junit <path>       No description.
->>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
 "#;
 
 #[derive(Debug, Deserialize)]
@@ -84,11 +80,7 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
-<<<<<<< HEAD
     flag_junit: Option<PathBuf>,
-=======
-    flag_junit: Option<String>,
->>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,12 +105,7 @@ impl Args {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
 
-<<<<<<< HEAD
         if let Some(ref path) = self.flag_junit {
-=======
-        if let Some(ref junit_path) = self.flag_junit {
-            let path = PathBuf::from(junit_path);
->>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
             match create_junit(path, benches) {
                 Ok(_) => { return Ok(()); }
                 Err(e) => {
@@ -271,7 +258,7 @@ impl Args {
             } else if let Ok(msg) = result.parse::<FailedMsgBuilder>() {
                 if let Ok(msg) = msg.build(&iter.next().unwrap().unwrap()) {
                     if let Some(b) = vec.iter_mut().find(|b|b.name == msg.name) {
-                        b.failed = Some(msg);
+                        b.failed_msg = Some(msg);
                     }
                 }
             }
@@ -363,27 +350,30 @@ fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
     })
 }
 
+/// Create junit-format xml file with given path when junit flag on.
 fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<()>
     where P: AsRef<Path>
 {
+    let cmps = benches.comparisons();
+
+    // An iter of all failed test cases in the new set.
+    let failures_iter = {
+        let a = benches.failures().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed_msg.is_some());
+        a.chain(b)
+    };
+
+    // An iter of all benchmarked test cases in the new set.
+    let new_benchmarks_iter = {
+        let a = benches.new_benchmarks().iter();
+        let b = benches.missing_new().iter().filter(|b|b.failed_msg.is_none());
+        a.chain(b)
+    };
+
     let file = File::create(path)?;
     let mut ew = EmitterConfig::new()
         .perform_indent(true)
-        .create_writer(file);
-
-    let cmps = benches.comparisons();
-
-    let failures_iter = {
-        let a = benches.failures().iter();
-        let b = benches.missing_new().iter().filter(|b|b.failed.is_some());
-        a.chain(b)
-    };
-
-    let new_benchmarks_iter = {
-        let a = benches.new_benchmarks().iter();
-        let b = benches.missing_new().iter().filter(|b|b.failed.is_none());
-        a.chain(b)
-    };
+        .create_writer(BufWriter::new(file));
 
     let testsuite_name = "benchcmp"; // 暫定
     let errors = 0; // エラーなんてなかった
@@ -394,6 +384,7 @@ fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<(
         format!("{:.9}", sum as f64 * 0.000_000_001)
     };
 
+    // Add elements of xml.
     ew.write(
         XmlEvent::start_element("testsuite")
             .attr("name", testsuite_name)
@@ -412,6 +403,16 @@ fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<(
         )?;
         ew.write(XmlEvent::end_element())?;
     }
+    for new in new_benchmarks_iter {
+        let time = &format!("{:.9}", new.ns as f64 * 0.000_000_001);
+        ew.write(
+            XmlEvent::start_element("testcase")
+                .attr("classname", testsuite_name)
+                .attr("name", &new.name)
+                .attr("time", time)
+        )?;
+        ew.write(XmlEvent::end_element())?;
+    }
     for f in failures_iter {
         ew.write(
             XmlEvent::start_element("testcase")
@@ -419,7 +420,7 @@ fn create_junit<P>(path: P, benches: benchmark::PairedBenchmarks) -> XmlResult<(
                 .attr("name", &f.name)
                 .attr("time", "0")
         )?;
-            let msg = f.failed.as_ref().unwrap();
+            let msg = f.failed_msg.as_ref().unwrap();
             ew.write(
                 XmlEvent::start_element("failure")
                     .attr("type", "FAILED")

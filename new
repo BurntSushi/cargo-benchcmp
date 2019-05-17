@@ -5,12 +5,13 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 
 running 6 tests
-test benches::containts             ... bench:           0 ns/iter (+/- 0)
-test benches::includes              ... FAILED
-test benches::intersection          ... bench:          75 ns/iter (+/- 6)
-test benches::nullable_containts    ... bench:           0 ns/iter (+/- 0)
-test benches::nullable_includes     ... bench:          75 ns/iter (+/- 2)
-test benches::nullable_intersection ... bench:          75 ns/iter (+/- 1)
+test benches::containts              ... bench:           0 ns/iter (+/- 0)
+test benches::includes               ... FAILED
+test benches::intersection           ... bench:          75 ns/iter (+/- 6)
+test benches::nullable_containts     ... bench:           0 ns/iter (+/- 0)
+test benches::nullable_includes      ... bench:          75 ns/iter (+/- 2)
+test benches::nullable_intersection  ... bench:          75 ns/iter (+/- 1)
+test benches::nullable_intersection2 ... bench:          76 ns/iter (+/- 2)
 
 failures:
 

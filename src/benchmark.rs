@@ -48,9 +48,9 @@ impl From<Benchmarks> for PairedBenchmarks {
         let ov = Overlap::find(benches.old, benches.new, Benchmark::cmp);
 
         let (failed, benched): (Vec<(Benchmark, Benchmark)>, _)
-            = ov.overlap.into_iter().partition(|(_o, n)| n.failed.is_some());
+            = ov.overlap.into_iter().partition(|(_o, n)| n.failed_msg.is_some());
         let (benched_new, overlap): (Vec<(Benchmark, Benchmark)>, _)
-            = benched.into_iter().partition(|(o, _n)| o.failed.is_some());
+            = benched.into_iter().partition(|(o, _n)| o.failed_msg.is_some());
 
         let cmps = overlap.into_iter().map(|(a, b)| a.compare(b)).collect();
         PairedBenchmarks {
@@ -83,11 +83,15 @@ impl PairedBenchmarks {
         &self.unpaired_new
     }
 
+    /// Returns all benchmarks that were failed in the new set that were passed
+    /// in the old set.
     pub fn failures(&self) -> &[Benchmark] {
         // old: _, new: FAILED
         &self.failed
     }
 
+    /// Returns all benchmarks that were passed in the new set that were failed
+    /// in the old set.
     pub fn new_benchmarks(&self) -> &[Benchmark] {
         // old: FAILED, new: benched
         &self.benched_new
@@ -101,7 +105,7 @@ pub struct Benchmark {
     pub ns: u64,
     pub variance: u64,
     pub throughput: Option<u64>,
-    pub failed: Option<FailedMsg>,
+    pub failed_msg: Option<FailedMsg>,
 }
 
 impl Eq for Benchmark {}
@@ -176,7 +180,7 @@ impl FromStr for Benchmark {
                 ns: ns,
                 variance: variance,
                 throughput: throughput,
-                failed: None,
+                failed_msg: None,
             })
         }
     }
@@ -209,6 +213,7 @@ impl Benchmark {
     }
 }
 
+/// Error message struct that all failed test cases have.
 #[derive(Clone, Debug)]
 pub struct FailedMsg {
     pub name: String,
