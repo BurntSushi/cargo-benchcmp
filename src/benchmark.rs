@@ -502,6 +502,7 @@ mod tests {
                     ns: ns,
                     variance: variance,
                     throughput: throughput,
+                    failed_msg: None
                 }
             }
         }
