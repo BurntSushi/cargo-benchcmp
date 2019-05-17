@@ -66,7 +66,11 @@ Options:
     --improvements       Show only improvements.
     --regressions        Show only regressions.
     --color <when>       Show colored rows: never, always or auto [default: auto]
+<<<<<<< HEAD
     --junit <path>       Create junit-format xml file with given path.
+=======
+    --junit <path>       No description.
+>>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
 "#;
 
 #[derive(Debug, Deserialize)]
@@ -80,7 +84,11 @@ struct Args {
     flag_improvements: bool,
     flag_regressions: bool,
     flag_color: When,
+<<<<<<< HEAD
     flag_junit: Option<PathBuf>,
+=======
+    flag_junit: Option<String>,
+>>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,7 +113,12 @@ impl Args {
         let (name_old, name_new) = Args::names(&self.arg_old, &self.arg_new);
         let benches = try!(self.parse_benchmarks()).paired();
 
+<<<<<<< HEAD
         if let Some(ref path) = self.flag_junit {
+=======
+        if let Some(ref junit_path) = self.flag_junit {
+            let path = PathBuf::from(junit_path);
+>>>>>>> e022e5b3f96e2d5b576c769d21e9fb52fbe3d484
             match create_junit(path, benches) {
                 Ok(_) => { return Ok(()); }
                 Err(e) => {
