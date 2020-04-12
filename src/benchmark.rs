@@ -140,6 +140,16 @@ impl FromStr for Benchmark {
 }
 
 impl Benchmark {
+    /// Compares two results of a benchmark pulled from the same report
+    /// and decides whether self is a better result to compare with.
+    pub fn is_better_than(&self, other: &Benchmark) -> bool {
+        match self.ns.cmp(&other.ns) {
+            cmp::Ordering::Less => true,
+            cmp::Ordering::Equal => self.variance < other.variance,
+            cmp::Ordering::Greater => false,
+        }
+    }
+
     /// Compares an old benchmark (self) with a new benchmark.
     pub fn compare(self, new: Benchmark) -> Comparison {
         let diff_ns = new.ns as i64 - self.ns as i64;

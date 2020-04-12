@@ -127,3 +127,13 @@ $ cargo benchcmp old new --regressions --threshold 2
  name                                full:: ns/iter     full_overlap:: ns/iter  diff ns/iter  diff %  speedup
  ac_ten_one_prefix_byte_every_match  27,424 (364 MB/s)  28,046 (356 MB/s)                622   2.27%   x 0.98
 ```
+
+You can also concatenate measurements of the same version of benchmarks, to reduce noise.
+```
+$ cargo bench >> control
+```
+When comparing a file with multiple measurements of the same benchmark name in it,
+benchcmp will consider only the quickest measurement,
+and assume the other measurements were more affected by transient noise.
+If multiple measurements of the same name in in the same file are equally quick,
+benchcmp picks the one with the lowest variance.

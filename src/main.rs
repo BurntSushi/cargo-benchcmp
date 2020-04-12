@@ -235,10 +235,17 @@ impl Args {
     /// Parse benchmarks from a buffered reader.
     fn parse_buffer<B: BufRead>(buffer: B) -> Result<Vec<Benchmark>> {
         let iter = buffer.lines();
-        let mut vec = Vec::with_capacity(iter.size_hint().0);
+        let mut vec: Vec<Benchmark> = Vec::new();
         for result in iter {
-            if let Ok(bench) = try!(result).parse() {
-                vec.push(bench)
+            if let Ok(bench) = try!(result).parse::<Benchmark>() {
+                match vec.binary_search_by_key(&&bench.name, |b| &b.name) {
+                    Ok(idx) => {
+                        if bench.is_better_than(&vec[idx]) {
+                            vec[idx] = bench;
+                        }
+                    }
+                    Err(idx) => vec.insert(idx, bench),
+                }
             }
         }
         Ok(vec)

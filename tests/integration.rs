@@ -293,3 +293,12 @@ fn zero_improvements_threshold() {
         .no_stdout()
         .stderr_is(include_str!("fixtures/zero_improvements.expected"));
 }
+
+#[test]
+fn repeated_runs() {
+    new_cmd()
+        .args(&["bench_output_8.txt", "bench_output_8_repeated.txt", "--variance"])
+        .succeeds()
+        .no_stderr()
+        .stdout_is(include_str!("fixtures/repeated_runs.expected"));
+}

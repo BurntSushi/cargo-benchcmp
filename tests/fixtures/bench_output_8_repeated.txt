@@ -1,0 +1,5 @@
+test dense::ac_one_byte                               ... bench:         500 ns/iter (+/- 3) = 20000 MB/s
+test dense::ac_one_byte                               ... bench:         350 ns/iter (+/- 4) = 28653 MB/s
+test dense::ac_one_byte                               ... bench:         350 ns/iter (+/- 3) = 28653 MB/s
+test dense::ac_one_byte                               ... bench:         450 ns/iter (+/- 2) = 22222 MB/s
+test dense::ac_one_prefix_byte_every_match            ... bench:     112,960 ns/iter (+/- 1,490) = 88 MB/s

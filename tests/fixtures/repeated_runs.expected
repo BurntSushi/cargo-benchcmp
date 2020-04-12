@@ -1,0 +1,3 @@
+ name                                   bench_output_8.txt ns/iter    bench_output_8_repeated.txt ns/iter  diff ns/iter  diff %  speedup 
+ dense::ac_one_byte                     350 (+/- 4) (28653 MB/s)      350 (+/- 3) (28653 MB/s)                        0   0.00%   x 1.00 
+ dense::ac_one_prefix_byte_every_match  112,960 (+/- 1490) (88 MB/s)  112,960 (+/- 1490) (88 MB/s)                    0   0.00%   x 1.00 
