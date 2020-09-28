@@ -12,6 +12,11 @@ readme = "README.md"
 keywords = ["benchmark", "compare", "bench", "micro"]
 license = "Unlicense/MIT"
 
+[[bin]]
+bench = false
+path = "src/main.rs"
+name = "cargo-benchcmp"
+
 [dependencies]
 docopt = "1"
 lazy_static = "1"
