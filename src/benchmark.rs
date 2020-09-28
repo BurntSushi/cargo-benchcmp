@@ -1,7 +1,7 @@
 use std::cmp;
 use std::str::FromStr;
 
-use prettytable::row::Row;
+use prettytable::Row;
 use regex::Regex;
 
 /// Two sets of benchmarks that are comparable but haven't been paired up yet.

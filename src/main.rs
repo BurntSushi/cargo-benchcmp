@@ -137,7 +137,7 @@ impl Args {
                     When::Auto => output.printstd(),
                     When::Never => try!(output.print(&mut io::stdout())),
                     When::Always => output.print_tty(true),
-                }
+                };
             } else {
                 let comparisions = benches.comparisons().len();
                 let improvements = benches.comparisons().iter().filter(|c| c.diff_ns <= 0).count();
