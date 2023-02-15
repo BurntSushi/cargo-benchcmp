@@ -135,8 +135,12 @@ impl Args {
             if output.len() > 1 {
                 match self.flag_color {
                     When::Auto => output.printstd(),
-                    When::Never => try!(output.print(&mut io::stdout())),
-                    When::Always => output.print_tty(true),
+                    When::Never => {
+                        try!(output.print(&mut io::stdout()));
+                    }
+                    When::Always => {
+                        try!(output.print_tty(true));
+                    }
                 };
             } else {
                 let comparisions = benches.comparisons().len();

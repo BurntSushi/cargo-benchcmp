@@ -25,7 +25,7 @@ serde = "1.0"
 serde_derive = "1.0"
 
 [dependencies.prettytable-rs]
-version = "0.8.0"
+version = "0.10.0"
 default-features = false # Don't use crlf on windows
 
 [dev-dependencies]
