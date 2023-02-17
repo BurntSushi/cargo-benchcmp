@@ -10,7 +10,7 @@ homepage = "https://github.com/BurntSushi/cargo-benchcmp"
 repository = "https://github.com/BurntSushi/cargo-benchcmp"
 readme = "README.md"
 keywords = ["benchmark", "compare", "bench", "micro"]
-license = "Unlicense/MIT"
+license = "Unlicense OR MIT"
 
 [[bin]]
 bench = false
