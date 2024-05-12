@@ -164,6 +164,14 @@ fn same_input() {
 }
 
 #[test]
+fn same_input_fractional() {
+    new_cmd()
+        .args(&["bench_output_fraction.txt", "bench_output_fraction.txt"])
+        .succeeds()
+        .stdout_is(include_str!("fixtures/same_input_fractional.expected"));
+}
+
+#[test]
 fn different_input() {
     new_cmd()
         .args(&["bench_output_2.txt", "bench_output_3.txt"])

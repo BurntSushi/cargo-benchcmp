@@ -1,0 +1,6 @@
+ name   bench_output_fraction.txt ns/iter  bench_output_fraction.txt ns/iter  diff ns/iter  diff %  speedup 
+ add    1                                  1                                             0   0.00%   x 1.00 
+ add2   1                                  1                                             0   0.00%   x 1.00 
+ add3   1                                  1                                             0   0.00%   x 1.00 
+ add4   1                                  1                                             0   0.00%   x 1.00 
+ empty  1                                  1                                             0   0.00%   x 1.00 
