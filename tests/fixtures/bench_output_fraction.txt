@@ -1,0 +1,6 @@
+running 4 tests
+test add  ... bench:           1.24 ns/iter (+/- 0.00)
+test add2 ... bench:           1.48 ns/iter (+/- 0.01)
+test add3 ... bench:           1.72 ns/iter (+/- 0.01)
+test add4 ... bench:           1.96 ns/iter (+/- 0.01)
+test empty ... bench:           1.24 ns/iter (+/- 0.00)

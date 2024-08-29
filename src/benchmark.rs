@@ -106,9 +106,9 @@ impl PartialOrd for Benchmark {
 lazy_static! {
     static ref BENCHMARK_REGEX: Regex = Regex::new(r##"(?x)
         test\s+(?P<name>\S+)                        # test   mod::test_name
-        \s+...\sbench:\s+(?P<ns>[0-9,]+)\s+ns/iter  # ... bench: 1234 ns/iter
-        \s+\(\+/-\s+(?P<variance>[0-9,]+)\)         # (+/- 4321)
-        (?:\s+=\s+(?P<throughput>[0-9,]+)\sMB/s)?   # =   2314 MB/s
+        \s+...\sbench:\s+(?P<ns>[0-9,.]+)\s+ns/iter  # ... bench: 1234 ns/iter
+        \s+\(\+/-\s+(?P<variance>[0-9,.]+)\)         # (+/- 4321)
+        (?:\s+=\s+(?P<throughput>[0-9,.]+)\sMB/s)?   # =   2314 MB/s
     "##).unwrap();
 }
 
@@ -273,7 +273,7 @@ fn parse_commas(s: &str) -> Option<u64> {
 
 /// Drops all commas in a string
 fn drop_commas(s: &str) -> String {
-    s.chars().filter(|&b| b != ',').collect()
+    s.chars().take_while(|&c| c != '.').filter(|&c| c != ',').collect()
 }
 
 /// Commafy a number as a string.
