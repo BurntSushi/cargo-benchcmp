@@ -6,9 +6,9 @@ utility takes as input two sets of micro-benchmarks (one "old" and the other
 
 [![Linux build status](https://api.travis-ci.org/BurntSushi/cargo-benchcmp.svg)](https://travis-ci.org/BurntSushi/cargo-benchcmp)
 [![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/cargo-benchcmp?svg=true)](https://ci.appveyor.com/project/BurntSushi/cargo-benchcmp)
-[![crates.io page](http://meritbadge.herokuapp.com/cargo-benchcmp)](https://crates.io/crates/cargo-benchcmp)
+[![crates.io page](https://img.shields.io/crates/v/cargo-benchcmp.svg)](https://crates.io/crates/cargo-benchcmp)
 
-Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org).
+Dual-licensed under MIT or the [UNLICENSE](https://unlicense.org/).
 
 ### Installation
 
