@@ -113,23 +113,23 @@ lazy_static! {
 }
 
 impl FromStr for Benchmark {
-    type Err = ();
+    type Err = String;
 
     /// Parses a single benchmark line into a Benchmark.
-    fn from_str(line: &str) -> Result<Benchmark, ()> {
+    fn from_str(line: &str) -> Result<Benchmark, String> {
         let caps = match BENCHMARK_REGEX.captures(line) {
-            None => return Err(()),
+            None => return Err("benchmark line did not match expected format".to_string()),
             Some(caps) => caps,
         };
-        let ns = match parse_commas(&caps["ns"]) {
-            None => return Err(()),
-            Some(ns) => ns,
+        let ns = parse_commas(&caps["ns"])
+            .map_err(|e| format!("failed to parse ns value '{}': {}", &caps["ns"], e))?;
+        let variance = parse_commas(&caps["variance"])
+            .map_err(|e| format!("failed to parse variance value '{}': {}", &caps["variance"], e))?;
+        let throughput = match caps.name("throughput") {
+            Some(m) => Some(parse_commas(m.as_str())
+                .map_err(|e| format!("failed to parse throughput value '{}': {}", m.as_str(), e))?),
+            None => None,
         };
-        let variance = match parse_commas(&caps["variance"]) {
-            None => return Err(()),
-            Some(variance) => variance,
-        };
-        let throughput = caps.name("throughput").and_then(|m| parse_commas(m.as_str()));
         Ok(Benchmark {
             name: caps["name"].to_string(),
             ns: ns,
@@ -266,9 +266,21 @@ impl<T> Overlap<T> {
     }
 }
 
-/// Drops all commas in a string and parses it as a unsigned integer
-fn parse_commas(s: &str) -> Option<u64> {
-    drop_commas(s).parse().ok()
+/// Drops all commas in a string and parses it as an unsigned integer.
+/// Returns an error if the value is not a valid unsigned integer or
+/// if it overflows u64.
+fn parse_commas(s: &str) -> Result<u64, &'static str> {
+    let stripped = drop_commas(s);
+    match stripped.parse::<u64>() {
+        Ok(n) => Ok(n),
+        Err(_) => {
+            if stripped.chars().all(|c| c.is_ascii_digit()) && !stripped.is_empty() {
+                Err("numeric value overflows u64")
+            } else {
+                Err("invalid numeric value")
+            }
+        }
+    }
 }
 
 /// Drops all commas in a string
@@ -448,6 +460,38 @@ mod tests {
                     false
                 }
             }
+        }
+
+        #[test]
+        fn parse_malformed_line() {
+            assert!("not a benchmark".parse::<Benchmark>().is_err());
+            assert!("test foo ... bench: abc ns/iter (+/- 0)".parse::<Benchmark>().is_err());
+            assert!("test foo ... bench: 123 ns/iter".parse::<Benchmark>().is_err());
+        }
+
+        #[test]
+        fn parse_zero_iteration() {
+            let b: Benchmark = "test foo ... bench: 0 ns/iter (+/- 0)".parse().unwrap();
+            assert_eq!(b.name, "foo");
+            assert_eq!(b.ns, 0);
+            assert_eq!(b.variance, 0);
+            assert_eq!(b.throughput, None);
+        }
+
+        #[test]
+        fn parse_large_numeric_overflow() {
+            let line = "test foo ... bench: 18446744073709551616 ns/iter (+/- 0)";
+            let err = line.parse::<Benchmark>().unwrap_err();
+            assert!(err.contains("overflow"), "expected overflow error, got: {}", err);
+        }
+
+        #[test]
+        fn parse_unusual_whitespace() {
+            let line = "test\tfoo\t... bench:\t1234\tns/iter (+/-\t56)";
+            let b: Benchmark = line.parse().unwrap();
+            assert_eq!(b.name, "foo");
+            assert_eq!(b.ns, 1234);
+            assert_eq!(b.variance, 56);
         }
     }
 }
